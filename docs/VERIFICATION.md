@@ -1,8 +1,10 @@
 # Cinemastamps 0.1.0 verification
 
-Checked on September 29, 2026 (Pacific time).
+Checked on September 29–30, 2026 (Pacific time).
 
 Final regression pass: September 29, 2026 (Pacific time). The production build was rebuilt and the resulting APK was reinstalled before testing.
+
+Repository reproducibility pass: September 30, 2026. A fresh public GitHub clone passed `pnpm install --frozen-lockfile`, all 4 model/API tests, `pnpm build`, `pnpm android:sync`, and Android `assembleDebug` using the documented SDK/JDK environment. GitHub recognizes the repository's MIT license. CI has not run: the connected GitHub credential did not permit publishing a workflow file. The checks listed here are local results.
 
 ## Result
 
@@ -86,6 +88,6 @@ No clipping or horizontal overflow was observed in the tested layouts. The imple
 2. Verify the phone flow on the actual TV/phone Wi-Fi network; emulator networking and a browser-sized phone view are not substitutes for that hardware check.
 3. Test VoiceView and broader accessibility behavior on Fire TV.
 4. Produce a signed release build and Appstore materials if publishing; this deliverable is a debug APK.
-5. Record the qualifying demo and prepare the final hackathon submission and tool feedback. Nothing has been published or submitted.
+5. Record the qualifying demo and complete the final hackathon entry. Source is public on GitHub and the Devpost project is a draft; a draft is not a completed hackathon entry.
 
 Vega OS support, streaming-service video access, DRM, frame-accurate editing integrations, cloud accounts, and automated editing recommendations are outside this first version.
