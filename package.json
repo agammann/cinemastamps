@@ -1,0 +1,29 @@
+{
+  "name": "cinemastamps",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "start": "node server/index.mjs",
+    "start:lan": "node server/index.mjs --lan",
+    "test": "node --test tests/*.test.mjs",
+    "android:sync": "node scripts/sync-android.mjs"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "qrcode": "^1.5.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9",
+    "vite": "^7.1.7"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}

@@ -1,0 +1,16 @@
+node_modules/
+dist/
+data/
+android/.gradle/
+android/local.properties
+android/app/build/
+android/build/
+android/app/src/main/assets/web/
+*.log
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+.devpost-hackathon-state.json
+devpost-submission.md
