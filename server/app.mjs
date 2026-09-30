@@ -12,6 +12,8 @@ import {
 } from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import QRCode from "qrcode";
+import { createNativeMedia, nativePaths } from "./native-media.mjs";
 import {
   KINDS,
   DEMO,
@@ -23,7 +25,7 @@ import {
 
 const TOKEN = /^[a-f0-9]{48}$/;
 const DAY = 24 * 60 * 60 * 1000;
-export function createApp({ dataDir, webDir, port = 4318 }) {
+export function createApp({ dataDir, webDir, port = 4318, publicBase = "" }) {
   mkdirSync(dataDir, { recursive: true });
   const app = express();
   app.disable("x-powered-by");
@@ -135,6 +137,19 @@ export function createApp({ dataDir, webDir, port = 4318 }) {
     res.set("Cache-Control", "no-store");
     res.json(req.review);
   });
+  const prepareNativeMedia = createNativeMedia();
+  app.get("/api/native/pair", auth, async (req, res) => {
+    const base = publicBase || `${req.protocol}://${req.get('host')}`;
+    const url = `${base.replace(/\/$/, '')}/?companion=1#token=${req.token}`;
+    res.set('Cache-Control', 'no-store').json({ url, qr: await QRCode.toDataURL(url, { width: 360, margin: 2 }) });
+  });
+  app.get("/api/native/media", auth, async (req, res) => {
+    if (req.query.source !== req.review.source.id) return res.status(409).json({ error: 'The film changed. Refresh this screening.' });
+    const { input, output } = nativePaths(req.review, sessionDir(req.token), webDir);
+    await prepareNativeMedia(input, output);
+    if (get(req.token)?.source.id !== req.query.source) return res.status(409).json({ error: 'The film changed while preparing playback.' });
+    res.set('Cache-Control', 'private, no-store').type('video/mp4').sendFile(path.resolve(output));
+  });
   app.put("/api/position", auth, (req, res) => {
     if (
       !Number.isFinite(req.body?.position) ||
@@ -148,6 +163,8 @@ export function createApp({ dataDir, webDir, port = 4318 }) {
   });
   app.post("/api/stamps", auth, (req, res) => {
     const stamp = req.body;
+    if (stamp?.sourceId && stamp.sourceId !== req.review.source.id)
+      return res.status(409).json({ error: "The film changed before this stamp was saved. Stamp the new film instead." });
     if (!validStamp(stamp))
       return res.status(400).json({ error: "Invalid stamp." });
     if (req.review.stamps.some((s) => s.id === stamp.id))

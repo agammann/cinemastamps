@@ -5,7 +5,7 @@ import { NoteDialog, ExportDialog } from "./Dialogs";
 import { exportReview } from "../shared/model.mjs";
 import Icon from "./Icon";
 export default function Companion() {
-  const [connection] = useState(() => ({
+  const [connection, setConnection] = useState(() => ({
     base: location.origin,
     token: new URLSearchParams(location.hash.slice(1)).get("token") || "",
   }));
@@ -16,6 +16,17 @@ export default function Companion() {
     [busy, setBusy] = useState(false),
     [confirm, setConfirm] = useState(false),
     [message, setMessage] = useState("");
+  useEffect(() => {
+    const changed = () => {
+      setReview(null);
+      setEditing(null);
+      setExporting(false);
+      setMessage("");
+      setConnection({base: location.origin, token: new URLSearchParams(location.hash.slice(1)).get("token") || ""});
+    };
+    window.addEventListener("hashchange", changed);
+    return () => window.removeEventListener("hashchange", changed);
+  }, []);
   useEffect(() => {
     let alive = true;
     async function refresh() {

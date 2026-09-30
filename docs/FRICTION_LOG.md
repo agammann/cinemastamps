@@ -29,7 +29,8 @@ These observations describe this project's development environment. Android TV e
 - Expected: a clearly documented public simulator path appropriate to a Fire OS APK.
 - Observed: an Android TV emulator is useful for development but does not establish Fire OS compatibility. The Vega SDK has a different platform/toolchain and is not an APK test environment.
 - Severity: important; qualifying device evidence remains a separate release gate.
-- Workaround: prepare the APK and device checklist for a released Fire OS Fire TV.
+- Initial workaround: prepare the APK and device checklist for a released Fire OS Fire TV.
+- Subsequent outcome: implemented a separate native Vega application and demonstrated it in the official Vega Virtual Device on an Ubuntu Docker host. This does not validate the APK on Fire OS.
 - Suggestion: provide a supported Windows-accessible Fire OS test environment with explicit guidance on recordings that developers may publish for demonstrations.
 
 ## References
@@ -38,3 +39,13 @@ These observations describe this project's development environment. Android TV e
 - [Connect to Fire TV through ADB](https://developer.amazon.com/docs/fire-tv/connecting-adb-to-device.html)
 - [Amazon app testing tools](https://developer.amazon.com/apps-and-games/test)
 - [Vega SDK setup](https://developer.amazon.com/docs/vega/0.24/install-vega-sdk)
+
+## Vega Virtual Device and native media
+
+- The Linux virtual-device image lacked the required WebView service, matching Amazon's documented Linux limitation. The demo therefore uses native React Native components and W3C media instead of a WebView wrapper.
+- Software GL with virtual-device graphics acceleration enabled produced video; the no-acceleration mode showed a black video surface in this local configuration.
+- Replacing a media surface immediately after deinitialization raced the asynchronous player cleanup. Serializing cleanup before the next initialization fixed uploaded-film playback without an app restart.
+- The legacy core AsyncStorage path did not preserve the paired review in this environment. Amazon's dedicated async-storage library, installed through npm and autolinked, passed terminate/relaunch verification.
+- Repeated virtual-device stop/start inside the container could leave a stale process lock. Restarting this dedicated container recovered it. The local launcher exposes an explicit restart option.
+
+These are bounded observations from the documented environment, not general claims of platform defects. See [Vega known issues](https://developer.amazon.com/docs/vega/0.24/kvd-issues) and [React Native AsyncStorage](https://www.developer.amazon.com/docs/vega-api/0.24/react-native-async-storage).

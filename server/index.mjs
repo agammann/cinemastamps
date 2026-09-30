@@ -8,6 +8,7 @@ const app = createApp({
   dataDir: path.join(root, "data"),
   webDir: path.join(root, "dist"),
   port,
+  publicBase: process.env.PUBLIC_BASE_URL || "",
 });
 app.listen(port, host, () =>
   console.log(

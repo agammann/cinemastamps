@@ -4,9 +4,21 @@ A screening room for Fire TV. Watch your own rough cut, stamp **Great moment**, 
 
 Created by agammann.
 
-![Cinemastamps running in an Android TV emulator](docs/screenshots/screening.png)
+![Cinemastamps running on the Vega Virtual Device](docs/screenshots/vega-screening.png)
 
-**Development preview:** the browser and installed Android APK have been tested. Fire OS device verification and the qualifying Fire TV demo are still pending. The screenshot above is from a standard Android TV emulator.
+**Version 0.2.0:** the native React Native app runs on Amazon's official Vega Virtual Device. Playback, remote stamping, review filters, companion notes, uploads, export, and restart persistence were exercised there. Installable Vega packages and the recorded demonstration are available in [Releases](https://github.com/agammann/cinemastamps/releases). Physical Fire TV hardware, audible output, and VoiceView remain unverified.
+
+## Run the Vega demo
+
+The native Vega application is the hackathon demonstration target. Start the local companion with Docker:
+
+```sh
+docker compose up --build -d
+```
+
+The companion is served on `http://127.0.0.1:8091`. Install the matching Vega package and open Cinemastamps. The default companion address is `http://10.0.2.2:8091` for the virtual device. Use **Settings** to change it. See [Vega build and installation instructions](vega/README.md).
+
+For a phone or physical TV, set `BIND_ADDRESS` to your computer's LAN address and `PUBLIC_BASE_URL` to its full URL before starting Compose. Keep the companion computer running. The native demo prepares local MP4/WebM clips up to five minutes into bounded H.264/AAC media; arbitrary streaming URLs are unsupported in the native player. Prepared media is limited to 32 MB. Sending a new film starts a new review.
 
 ## What works
 
@@ -16,7 +28,8 @@ Created by agammann.
 - A bundled Sintel trailer for an offline demonstration.
 - Direct MP4/WebM links and local files in the browser.
 - A local-network phone companion: scan a QR code, send a video, edit notes, and download the review.
-- An Android APK with TV launcher support, directional navigation, media keys, and Back handling, intended for Fire OS.
+- A native Vega app with remote focus, playback timestamps, review filters, companion pairing, and persistent reviews.
+- An additional Android APK with TV launcher support, directional navigation, media keys, and Back handling, intended for Fire OS.
 
 ## Run on a computer
 
@@ -77,7 +90,7 @@ The standalone app stores the current review locally. Browser-local video files 
 
 The companion stores reviews and uploads in `data/` on the hosting computer. Pairing links grant access to that screening and expire after 24 hours; expired folders are pruned when a new screening is created. Disconnecting the TV does **not** revoke an existing phone link. This service is designed for a trusted local network and uses HTTP by default. Do not expose it directly to the public internet. There are no analytics, account registration, or external model calls. The bundled font and film work offline.
 
-Playback timestamps are captured from the video element in seconds, including fractional seconds. They are suitable for review notes; this version does not promise frame-accurate editing timecode or direct editor integrations. CSV exports neutralize spreadsheet formulas and quote multiline notes.
+Playback timestamps are captured from the active player in seconds, including fractional seconds. They are suitable for review notes; this version does not promise frame-accurate editing timecode or direct editor integrations. CSV exports neutralize spreadsheet formulas and quote multiline notes.
 
 ## Verification
 
@@ -93,6 +106,7 @@ See [verification notes](docs/VERIFICATION.md) for the exact tested environments
 - `src/`: React screening room, player, remote focus, dialogs, and phone companion.
 - `shared/`: review model, timestamps, validation, and exports.
 - `server/`: local companion API, authenticated sessions, and video uploads.
+- `vega/`: native React Native application for Vega OS 1.2.
 - `android/`: Fire OS Android wrapper and offline web assets after syncing.
 - `tests/`: model and companion API tests.
 - `docs/`: design, demo, and verification notes.

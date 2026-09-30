@@ -14,3 +14,6 @@ android/app/src/main/assets/web/
 *.jks
 .devpost-hackathon-state.json
 devpost-submission.md
+vega/build/
+vega/buildinfo.json
+vega/dist/

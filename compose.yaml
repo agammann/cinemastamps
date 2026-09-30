@@ -1,0 +1,13 @@
+services:
+  companion:
+    build: .
+    init: true
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${COMPANION_PORT:-8091}:4318"
+    environment:
+      PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-http://127.0.0.1:8091}"
+    volumes:
+      - reviews:/app/data
+    restart: unless-stopped
+volumes:
+  reviews:

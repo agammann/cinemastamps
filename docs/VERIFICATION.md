@@ -1,4 +1,23 @@
-# Cinemastamps 0.1.0 verification
+# Cinemastamps verification
+
+## Version 0.2.0: native Vega — September 30, 2026
+
+The complete native app was installed and exercised on Amazon's Vega Virtual Device, OS 1.2 TV Ship/102401320, with SDK 0.24.12112 and CLI 1.4.2. The Linux host was Ubuntu 24.04 inside Docker Desktop on Windows, with KVM, Xvfb, Mesa software GL, and noVNC. This nested configuration worked locally; it is not claimed as an officially supported Amazon host configuration.
+
+- Native TypeScript check passed (`npm test` is a typecheck, not a unit-test suite).
+- Native ESLint completed with zero errors and nine warnings: system-library advisories and dynamic inline styles.
+- Release packages built for x86_64, aarch64, and armv7. Only x86_64 was installed and exercised.
+- A fresh Docker companion build passed all six Node model/API/media tests, zero skipped. The native media test generates a fixture and checks concurrent preparation, fMP4 output, H.264 level 3.1/AAC, duration, and remote-source rejection. API checks include authenticated pairing, source mismatch, and stale-stamp rejection.
+- Actual film picture and advancing playback time were observed; play/pause, seeking, directional focus, all three stamps, review filtering, and timestamp selection followed by Play worked.
+- A companion note appeared on the native TV. A CSV downloaded through the browser preserved 7.866, 15.462, and 24.111 second timestamps and the edited note.
+- An MP4 uploaded through the companion played on Vega without restarting the app. The previous media player's asynchronous teardown is awaited before initializing the replacement.
+- Terminate/relaunch preserved the paired review using Amazon's dedicated AsyncStorage library. Reinstalling with `vega run-app` resets application data and is not a persistence test.
+- QR pairing showed the reachable local-network companion URL. Back closed the modal. A real physical phone was not used.
+- The final x86_64 package was reinstalled and smoke-tested; playback completed and a remote-selected stamp saved. The prepared Windows launcher reopened the installed app successfully.
+
+The 1:58 narrated demonstration contains actual captures of the installed native app, edited for length, with explanatory title cards and an actual exported review. The application footage is not a mockup. Audio output from the TV was not validated because noVNC does not carry TV sound. Physical Fire TV performance, sleep/wake, VoiceView, and hardware remote media keys remain unverified. The native player buffers prepared short clips, bounded at 32 MB; it is not a long-form streaming implementation.
+
+## Earlier browser and Android verification
 
 Checked on September 29–30, 2026 (Pacific time).
 
@@ -6,7 +25,7 @@ Final regression pass: September 29, 2026 (Pacific time). The production build w
 
 Repository reproducibility pass: September 30, 2026. A fresh public GitHub clone passed `pnpm install --frozen-lockfile`, all 4 model/API tests, `pnpm build`, `pnpm android:sync`, and Android `assembleDebug` using the documented SDK/JDK environment. GitHub recognizes the repository's MIT license. CI has not run: the connected GitHub credential did not permit publishing a workflow file. The checks listed here are local results.
 
-## Result
+## Earlier 0.1.0 result
 
 The browser application and Android APK complete the intended screening workflow in the environments below. A physical Fire TV was not connected. This build is ready for Fire OS device testing; Fire OS compatibility and hackathon demo compliance are not yet verified on an Amazon device.
 
@@ -82,12 +101,12 @@ The concept and rendered screenshot were inspected at the concept's native 1672 
 
 No clipping or horizontal overflow was observed in the tested layouts. The implementation follows the selected design with the functional deviations above; it is not a pixel-identical rendering of the illustrative video still.
 
-## Remaining checks before submission
+## Remaining physical-device and publishing checks
 
 1. Install this APK on an actual Fire OS device and test its Amazon WebView, codecs, remote, sound, sleep/wake, and memory behavior.
 2. Verify the phone flow on the actual TV/phone Wi-Fi network; emulator networking and a browser-sized phone view are not substitutes for that hardware check.
 3. Test VoiceView and broader accessibility behavior on Fire TV.
 4. Produce a signed release build and Appstore materials if publishing; this deliverable is a debug APK.
-5. Record the qualifying demo and complete the final hackathon entry. Source is public on GitHub and the Devpost project is a draft; a draft is not a completed hackathon entry.
+5. Publish the recorded Vega demo to a supported video host and complete the final hackathon entry. A Devpost draft is not a submitted entry.
 
-Vega OS support, streaming-service video access, DRM, frame-accurate editing integrations, cloud accounts, and automated editing recommendations are outside this first version.
+Streaming-service video access, DRM, frame-accurate editing integrations, cloud accounts, and automated editing recommendations are outside this first version.

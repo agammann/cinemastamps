@@ -1,28 +1,31 @@
-# Two-minute Cinemastamps demonstration
+# Cinemastamps hackathon demonstration
 
-1. Launch the installed app on a Fire OS device. Show that the remote moves visible focus between controls.
-2. Play the bundled film. At two or three moments, select a reaction without opening a keyboard. Show that each stamp has the actual playback time.
-3. Open Review, select Confusing, and choose a stamp to jump back to that moment.
-4. Pair a phone on the same network. Add a specific explanation from the phone and show it appearing on the TV.
-5. Export CSV on the phone and show the timestamp, reaction, and note in the downloaded report.
-6. If time allows, send a short original MP4 from the phone and play it on the TV.
+The finished recording is **1 minute 58 seconds**, 1280 x 720, H.264 video with English narration and on-screen captions. Application footage was captured from the installed native app on Amazon's official Vega Virtual Device, edited for length. The export card reproduces the actual CSV downloaded during the screening.
 
-Suggested description: “Cinemastamps turns a Fire TV screening into useful editing feedback. Watch your rough cut, stamp reactions with the remote, and send your editor precise notes.”
+| Time | Demonstration |
+|---|---|
+| 0:00-0:08 | Product purpose and native Vega target |
+| 0:08-0:39 | Film playback and three remote reactions at actual playback times |
+| 0:39-0:50 | Review screen and timestamp revisit |
+| 0:50-1:04 | Private QR companion link |
+| 1:04-1:12 | Companion note visible on the TV |
+| 1:12-1:28 | Uploaded film playing in the native app |
+| 1:28-1:42 | Actual exported timestamps, reactions, and note |
+| 1:42-1:58 | Repository, local companion requirement, environment, and film credits |
 
-The distinction to demonstrate is the complete Fire TV remote workflow. Do not claim that video review or timestamped notes were invented here, or make an unverified first-ever claim.
+Download `Cinemastamps-hackathon-demo.mp4` from the release assets. Publish to YouTube or Vimeo for the Devpost video field; a downloadable MP4 by itself does not complete that field.
 
-Capture an actual Fire TV or officially permitted simulator demonstration before submission. Include the repository, run instructions, third-party notices, and feedback about the Amazon development tools actually used. Publishing source code does not establish that a qualifying demo or Devpost entry is complete.
+## Live demonstration
 
-## Recording script (target 2:15)
+1. Start the companion and installed native Vega app following `vega/README.md`.
+2. Play the bundled trailer. Move focus with arrows and select the three reactions.
+3. Open Review, filter reactions, select a timestamp, then press Play.
+4. Open Pair phone and use its link from a phone/browser on the same network. Add a note and show it on TV.
+5. Download CSV and inspect the precise fractional timestamps.
+6. Send an MP4/WebM shorter than five minutes. Wait for preparation and play it. Uploading begins a new review; export first.
 
-| Time | Screen | Spoken line or caption |
-|---|---|---|
-| 0:00–0:12 | Fire TV launcher, then Cinemastamps | A rough cut deserves feedback from the place people actually watch: the couch. Cinemastamps turns a screening into useful editing notes. |
-| 0:12–0:38 | Play film; use remote to stamp three reactions | Keep watching. Select Great moment, Dragging, or Confusing. Each reaction records the actual playback time. |
-| 0:38–0:58 | Review; filter; choose a stamp | After the screening, filter the feedback and jump straight back to the moment that needs attention. |
-| 0:58–1:28 | Pair phone; phone edits note; TV updates | Use the remote for quick reactions and the phone for detailed notes. Both screens share the same review through a computer on the local network. |
-| 1:28–1:48 | Phone sends a short original MP4; TV plays it | Send your own draft from the phone. The video stays on the companion computer and streams to the TV. |
-| 1:48–2:05 | Add note; export; show downloaded CSV | Export timestamps, reactions, and notes as CSV, Markdown, or JSON. The editor gets specific feedback they can act on. |
-| 2:05–2:15 | App plus credits | Cinemastamps by agammann. Demo footage: Sintel, © Blender Foundation, CC BY 3.0. |
+On the prepared Windows computer, `Start-Cinemastamps-Demo.ps1` launches the existing Docker environment and opens the native simulator in the browser. It does not reinstall the app or reset reviews. Use `-RestartSimulator` only to recover a stale simulator process.
 
-Record a released Fire OS device and its model/OS evidence. Keep the video under three minutes and publish it in English on YouTube or Vimeo. Do not identify Android TV emulator footage as Fire OS. Do not publish footage from restricted prototype testing programs without the required authorization.
+Do not describe this as physical Fire TV testing or claim that timestamped video review was invented here. The demonstrated distinction is remote reactions plus a private companion and export, implemented as a native Vega TV application.
+
+Film: Sintel trailer, copyright 2010 Blender Foundation, CC BY 3.0. See `THIRD_PARTY_NOTICES.md`. The recording's narration is separate from film audio; audible TV output was not verified through noVNC.
