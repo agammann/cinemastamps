@@ -4,6 +4,8 @@ A screening room for Fire TV. Watch your own rough cut, stamp **Great moment**, 
 
 Created by agammann.
 
+**[Watch the 1:58 native Vega demonstration](https://www.youtube.com/watch?v=EfczFnhj0PA)** · [Download version 0.2.0](https://github.com/agammann/cinemastamps/releases/tag/v0.2.0)
+
 ![Cinemastamps running on the Vega Virtual Device](docs/screenshots/vega-screening.png)
 
 **Version 0.2.0:** the native React Native app runs on Amazon's official Vega Virtual Device. Playback, remote stamping, review filters, companion notes, uploads, export, and restart persistence were exercised there. Installable Vega packages and the recorded demonstration are available in [Releases](https://github.com/agammann/cinemastamps/releases). Physical Fire TV hardware, audible output, and VoiceView remain unverified.

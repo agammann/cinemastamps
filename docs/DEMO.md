@@ -13,7 +13,7 @@ The finished recording is **1 minute 58 seconds**, 1280 x 720, H.264 video with 
 | 1:28-1:42 | Actual exported timestamps, reactions, and note |
 | 1:42-1:58 | Repository, local companion requirement, environment, and film credits |
 
-Download `Cinemastamps-hackathon-demo.mp4` from the release assets. Publish to YouTube or Vimeo for the Devpost video field; a downloadable MP4 by itself does not complete that field.
+Watch the [public YouTube demonstration](https://www.youtube.com/watch?v=EfczFnhj0PA), or download `Cinemastamps-hackathon-demo.mp4` from the release assets. The YouTube URL is saved in the Devpost video field.
 
 ## Live demonstration
 
