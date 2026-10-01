@@ -2,7 +2,7 @@ schema-version = 1
 
 [package]
 title = "Cinemastamps"
-version = "0.2.1"
+version = "0.2.2"
 id = "com.agammann.cinemastamps.native"
 
 [os.version]
@@ -38,7 +38,7 @@ id = "/com.amazon.kepler.async_storage__async_storage_2@IAsyncStorage__AsyncStor
 id = "com.agammann.cinemastamps.native.main"
 runtime-module = "/com.amazon.kepler.runtime.react_native_kepler_4@IReactNativeKepler_0"
 launch-type = "singleton"
-categories = ["com.amazon.category.main"]
+categories = ["com.amazon.category.main", "com.amazon.category.kepler.media"]
 
 [[wants.service]]
 id = "com.amazon.media.server"
@@ -69,3 +69,13 @@ id = "com.amazon.audio.system"
 
 [[offers.service]]
 id = "com.amazon.gipc.uuid.*"
+
+[[extras]]
+key = "interface.provider"
+component-id = "com.agammann.cinemastamps.native.main"
+
+[extras.value.application]
+[[extras.value.application.interface]]
+interface_name = "com.amazon.kepler.media.IMediaPlaybackServer"
+command_options = ["StartOver", "SkipForward", "SkipBackward"]
+features = ["AdvancedSeek", "VariableSpeed"]

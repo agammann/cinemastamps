@@ -55,3 +55,9 @@ These are bounded observations from the documented environment, not general clai
 - noVNC transports picture and input, without live sound. A PulseAudio null sink and monitor capture verified actual movie audio and VoiceView speech from the emulator host.
 - This container has no init reaper. After restarts, stale PulseAudio PID state and an emulator hardware lock could collide with reused process IDs. The prepared launcher handles the stopped-container lock and stale audio daemon state, waits for full simulator readiness, and restores the host KVM module when needed.
 - Earlier cold starts sometimes stalled playback near six seconds with silent output. A player relaunch restored audio. Version 0.2.1 waits for decoder readiness, adds one bounded progress-based recovery attempt, and exposes a manual player reload. The final cold-start run completed normally; manual reload retained the review and restored playback. The underlying stall cause remains unconfirmed. See the verification report for the limits of these checks.
+
+## Remote media ownership and reconnection
+
+- An app-level TV event listener and the legacy W3C player session both handled a single Play/Pause press, causing an immediate play/pause pair. Version 0.2.2 uses the documented Kepler Media Controls integration as the sole media-key handler, with an ended-film replay override.
+- Retrying Connect after a failed startup lost the saved token in the previous implementation and created an empty review. Keeping the restored pairing for retries against the same companion passed the stop-service, restart-app, restore-service test with no extra session.
+- A disconnected virtual display caused Vega to terminate the native app while noVNC retained its last frame. Relaunch restored the review; this remains a simulator lifecycle limitation rather than an application crash diagnosis.

@@ -6,6 +6,7 @@ android
 vega/**
 !vega/src/
 !vega/src/playbackHealth.ts
+!vega/src/api.ts
 work
 *.log
 .devpost-hackathon-state.json

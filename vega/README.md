@@ -56,3 +56,9 @@ ffmpeg -f pulse -i cinemastamps.monitor -t 10 simulator-output.wav
 Record while playing, then again after pausing. Open the resulting WAV in an audio player. A noVNC browser view itself does not transmit sound. On an ordinary desktop Linux host with speakers, use its normal audio output instead of this capture sink.
 
 For VoiceView, hold Back + Menu for three seconds on the virtual remote, or use the documented `inputd-cli` shortcut from [Amazon's accessibility guide](https://developer.amazon.com/docs/react-native-vega/0.83/accessibility). Complete or exit the first-run tutorial, use the speech-compatible audio option, then navigate the app with directions and Select. The same Back + Menu shortcut turns VoiceView off. See [verification results](../docs/VERIFICATION.md) for tested behavior and remaining limits.
+
+## Remote controls and reconnecting
+
+Media commands use Amazon's W3C/Kepler Media Controls integration. In the virtual device, F4 is Play/Pause, F3 rewinds ten seconds, and F5 advances ten seconds. Click the simulator canvas after reconnecting noVNC so it receives keyboard input. Play after the trailer ends restarts it.
+
+If the companion is unavailable at launch, restore the service and choose Connect with the same address. The saved pairing and review are reused. Changing the companion address starts a separate session. Use `vega device install-app` for an update that retains app data; `vega run-app` reinstalls and resets it.

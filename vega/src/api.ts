@@ -1,4 +1,19 @@
 export type Connection = {base: string; token: string};
+export function connectionFor(
+  base: string,
+  saved: Connection | null,
+  token?: string,
+): Connection {
+  const cleanBase = base.trim().replace(/\/+$/, '');
+  if (!/^https?:\/\/[^\s/?#]+(?::\d+)?$/.test(cleanBase))
+    throw new Error(
+      'Enter a service address such as http://192.168.1.20:4320.',
+    );
+  return {
+    base: cleanBase,
+    token: token ?? (saved?.base === cleanBase ? saved.token : ''),
+  };
+}
 export type Kind = 'great' | 'dragging' | 'confusing';
 export type Stamp = {id: string; kind: Kind; time: number; note: string};
 export type Review = {

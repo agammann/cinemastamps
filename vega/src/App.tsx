@@ -10,15 +10,13 @@ import {
   BackHandler,
   useWindowDimensions,
 } from 'react-native';
-import {
-  useHideSplashScreenCallback,
-  useTVEventHandler,
-} from '@amazon-devices/react-native-kepler';
+import {useHideSplashScreenCallback} from '@amazon-devices/react-native-kepler';
 import AsyncStorage from '@amazon-devices/react-native-async-storage__async-storage';
 import type {VideoPlayer} from '@amazon-devices/react-native-w3cmedia';
 import {NativePlayer} from './NativePlayer';
 import {
   api,
+  connectionFor,
   labels,
   timecode,
   type Connection,
@@ -89,6 +87,7 @@ export const App = () => {
   const hideSplash = useHideSplashScreenCallback();
   const player = useRef<VideoPlayer | null>(null);
   const [connection, setConnection] = useState<Connection | null>(null);
+  const savedConnection = useRef<Connection | null>(null);
   const [review, setReview] = useState<Review | null>(null);
   const latestReview = useRef<Review | null>(null);
   const [service, setService] = useState(DEFAULT_BASE);
@@ -120,17 +119,20 @@ export const App = () => {
       setReview(next);
     }
   }, []);
-  const connect = useCallback(async (base: string, token = '') => {
+  const connect = useCallback(async (base: string, token?: string) => {
     const serial = ++generation.current;
     try {
-      const cleanBase = base.trim().replace(/\/$/, '');
-      if (!/^https?:\/\/[^\s/?#]+(?::\d+)?$/.test(cleanBase))
-        throw new Error(
-          'Enter a service address such as http://192.168.1.20:4320.',
-        );
-      const nextConnection = {base: cleanBase, token};
+      const nextConnection = connectionFor(
+        base,
+        savedConnection.current,
+        token,
+      );
+      const cleanBase = nextConnection.base;
+      setService(cleanBase);
+      // Keep the restored pairing available even if the first request fails.
+      if (nextConnection.token) savedConnection.current = nextConnection;
       let nextReview: Review;
-      if (token) {
+      if (nextConnection.token) {
         try {
           nextReview = await api(nextConnection, '/session');
         } catch (e) {
@@ -147,6 +149,7 @@ export const App = () => {
       }
       if (!alive.current || serial !== generation.current) return;
       await AsyncStorage.setItem(STORE, JSON.stringify(nextConnection));
+      savedConnection.current = nextConnection;
       latestReview.current = nextReview!;
       setReview(nextReview!);
       setConnection(nextConnection);
@@ -230,17 +233,8 @@ export const App = () => {
     },
     [ready],
   );
-  useTVEventHandler((event) => {
-    if (modal || event.eventKeyAction === 1) return;
-    if (event.eventType === 'playpause') togglePlay();
-    if (event.eventType === 'fastforward' || event.eventType === 'skip_forward')
-      seek(10);
-    if (event.eventType === 'rewind' || event.eventType === 'skip_backward')
-      seek(-10);
-    if (event.eventType === 'play' && player.current?.paused) togglePlay();
-    if (event.eventType === 'pause' && player.current && !player.current.paused)
-      togglePlay();
-  });
+  // W3C media's platform integration handles remote media keys. Handling them
+  // here as well makes a single Play/Pause press toggle twice.
   useEffect(() => {
     const listener = BackHandler.addEventListener('hardwareBackPress', () => {
       if (modal) {
@@ -304,7 +298,7 @@ export const App = () => {
     }
   };
   const visible = (review?.stamps || [])
-    .filter((item) => filter === 'all' || item.kind === filter)
+    .filter((item) => !reviewMode || filter === 'all' || item.kind === filter)
     .slice()
     .sort((a, b) => a.time - b.time);
   const renderButton = (

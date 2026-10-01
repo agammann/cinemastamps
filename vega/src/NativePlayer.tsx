@@ -1,9 +1,12 @@
 import React, {useCallback, useEffect, useRef} from 'react';
 import {StyleSheet, View} from 'react-native';
+import {useComponentInstance} from '@amazon-devices/react-native-kepler';
+import type {IMediaSessionId} from '@amazon-devices/kepler-media-controls';
 import {
   VideoPlayer,
   MediaSource,
   KeplerVideoSurfaceView,
+  KeplerMediaControlHandler,
 } from '@amazon-devices/react-native-w3cmedia';
 import type {Connection} from './api';
 import {createPlaybackHealth} from './playbackHealth';
@@ -11,6 +14,28 @@ import {createPlaybackHealth} from './playbackHealth';
 // Vega releases shared media resources asynchronously. Finish teardown before
 // initializing the player for a film received from the companion.
 let mediaTeardown: Promise<void> = Promise.resolve();
+
+// Match the on-screen Play button when the screening has finished.
+class ScreeningMediaControls extends KeplerMediaControlHandler {
+  constructor(private video: VideoPlayer) {
+    super();
+  }
+  async handlePlay(sessionId?: IMediaSessionId) {
+    if (this.video.ended) {
+      this.video.currentTime = 0;
+      await this.video.play();
+      return;
+    }
+    await super.handlePlay(sessionId);
+  }
+  async handleTogglePlayPause(sessionId?: IMediaSessionId) {
+    if (this.video.ended) {
+      await this.handlePlay(sessionId);
+      return;
+    }
+    await super.handleTogglePlayPause(sessionId);
+  }
+}
 
 type Props = {
   connection: Connection;
@@ -30,6 +55,7 @@ export function NativePlayer({
   onStall,
   resumeAt,
 }: Props) {
+  const componentInstance = useComponentInstance();
   const mounted = useRef(true);
   const controller = useRef(new AbortController());
   const callbacks = useRef({onStatus, onTick, onStall});
@@ -92,6 +118,10 @@ export function NativePlayer({
         status('Preparing your screening…');
         await mediaTeardown;
         if (!mounted.current) return;
+        await video.setMediaControlFocus(
+          componentInstance,
+          new ScreeningMediaControls(video),
+        );
         await video.initialize();
         if (!mounted.current) {
           await video.deinitialize();
@@ -155,7 +185,14 @@ export function NativePlayer({
         status(String(error));
       }
     },
-    [connection.base, connection.token, sourceId, player, resumeAt],
+    [
+      connection.base,
+      connection.token,
+      sourceId,
+      player,
+      resumeAt,
+      componentInstance,
+    ],
   );
   return (
     <View style={styles.frame}>
