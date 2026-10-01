@@ -6,6 +6,7 @@ import {
   KeplerVideoSurfaceView,
 } from '@amazon-devices/react-native-w3cmedia';
 import type {Connection} from './api';
+import {createPlaybackHealth} from './playbackHealth';
 
 // Vega releases shared media resources asynchronously. Finish teardown before
 // initializing the player for a film received from the companion.
@@ -17,6 +18,8 @@ type Props = {
   player: React.MutableRefObject<VideoPlayer | null>;
   onStatus: (status: string, ready: boolean) => void;
   onTick: (time: number, duration: number, playing: boolean) => void;
+  onStall: (time: number) => void;
+  resumeAt?: number;
 };
 export function NativePlayer({
   connection,
@@ -24,24 +27,38 @@ export function NativePlayer({
   player,
   onStatus,
   onTick,
+  onStall,
+  resumeAt,
 }: Props) {
   const mounted = useRef(true);
   const controller = useRef(new AbortController());
-  const callbacks = useRef({onStatus, onTick});
-  callbacks.current = {onStatus, onTick};
+  const callbacks = useRef({onStatus, onTick, onStall});
+  callbacks.current = {onStatus, onTick, onStall};
   const localPlayer = useRef<VideoPlayer | null>(null);
   const surfaceHandle = useRef('');
   useEffect(() => {
     mounted.current = true;
     const abort = controller.current;
+    const checkProgress = createPlaybackHealth();
     const timer = setInterval(() => {
       const current = localPlayer.current;
-      if (current)
+      if (current) {
         callbacks.current.onTick(
           current.currentTime || 0,
           Number.isFinite(current.duration) ? current.duration : 0,
           !current.paused && !current.ended,
         );
+        if (
+          checkProgress(
+            current.currentTime || 0,
+            !current.paused && !current.ended,
+            Date.now(),
+          )
+        ) {
+          current.pause();
+          callbacks.current.onStall(current.currentTime || 0);
+        }
+      }
     }, 250);
     return () => {
       mounted.current = false;
@@ -81,6 +98,17 @@ export function NativePlayer({
           return;
         }
         video.setSurfaceHandle(handle);
+        // Appending bytes is not the same as the native decoder being ready.
+        let resumed = false;
+        video.addEventListener('canplay', () => {
+          if (!mounted.current) return;
+          status('Ready to review', true);
+          if (resumeAt !== undefined && !resumed) {
+            resumed = true;
+            video.currentTime = resumeAt;
+            video.play().catch((error) => status(String(error)));
+          }
+        });
         video.addEventListener('error', () =>
           status(
             `Playback unavailable (${
@@ -116,7 +144,6 @@ export function NativePlayer({
             buffer.addEventListener('updateend', () => {
               if (!mounted.current) return;
               if (media.readyState === 'open') media.endOfStream();
-              status('Ready to review', true);
             });
             buffer.appendBuffer(bytes);
           } catch (error) {
@@ -128,7 +155,7 @@ export function NativePlayer({
         status(String(error));
       }
     },
-    [connection.base, connection.token, sourceId, player],
+    [connection.base, connection.token, sourceId, player, resumeAt],
   );
   return (
     <View style={styles.frame}>

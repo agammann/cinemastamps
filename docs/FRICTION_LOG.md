@@ -49,3 +49,9 @@ These observations describe this project's development environment. Android TV e
 - Repeated virtual-device stop/start inside the container could leave a stale process lock. Restarting this dedicated container recovered it. The local launcher exposes an explicit restart option.
 
 These are bounded observations from the documented environment, not general claims of platform defects. See [Vega known issues](https://developer.amazon.com/docs/vega/0.24/kvd-issues) and [React Native AsyncStorage](https://www.developer.amazon.com/docs/vega-api/0.24/react-native-async-storage).
+
+## Simulator audio and cold starts
+
+- noVNC transports picture and input, without live sound. A PulseAudio null sink and monitor capture verified actual movie audio and VoiceView speech from the emulator host.
+- This container has no init reaper. After restarts, stale PulseAudio PID state and an emulator hardware lock could collide with reused process IDs. The prepared launcher handles the stopped-container lock and stale audio daemon state, waits for full simulator readiness, and restores the host KVM module when needed.
+- Earlier cold starts sometimes stalled playback near six seconds with silent output. A player relaunch restored audio. Version 0.2.1 waits for decoder readiness, adds one bounded progress-based recovery attempt, and exposes a manual player reload. The final cold-start run completed normally; manual reload retained the review and restored playback. The underlying stall cause remains unconfirmed. See the verification report for the limits of these checks.

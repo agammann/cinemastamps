@@ -3,7 +3,9 @@ data
 dist
 .git
 android
-vega
+vega/**
+!vega/src/
+!vega/src/playbackHealth.ts
 work
 *.log
 .devpost-hackathon-state.json

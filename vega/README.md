@@ -43,3 +43,16 @@ vega device launch-app -d VirtualDevice --appName com.agammann.cinemastamps.nati
 5. Send a local MP4/WebM, up to five minutes. This starts a new review. Wait for local media preparation, then press Play.
 
 The companion must remain running. HTTP is intended for a trusted LAN; do not expose this server to the public internet. QR links grant access to the review until the session expires. The native player supports prepared short clips up to 32 MB, not arbitrary streaming URLs or DRM services. Fractional playback timestamps are retained, but frame-accurate editing timecode is not promised.
+
+## Audio and VoiceView testing without hardware
+
+On the prepared Linux simulator host, install `pulseaudio`, `pulseaudio-utils`, and `ffmpeg`, then run `bash scripts/start-vega-audio.sh` from the repository root **before starting the virtual device**. This creates a recording output, not a speaker or microphone connection. The emulator's PulseAudio sink input should identify `vega-virtual-device`.
+
+```sh
+pactl list sink-inputs
+ffmpeg -f pulse -i cinemastamps.monitor -t 10 simulator-output.wav
+```
+
+Record while playing, then again after pausing. Open the resulting WAV in an audio player. A noVNC browser view itself does not transmit sound. On an ordinary desktop Linux host with speakers, use its normal audio output instead of this capture sink.
+
+For VoiceView, hold Back + Menu for three seconds on the virtual remote, or use the documented `inputd-cli` shortcut from [Amazon's accessibility guide](https://developer.amazon.com/docs/react-native-vega/0.83/accessibility). Complete or exit the first-run tutorial, use the speech-compatible audio option, then navigate the app with directions and Select. The same Back + Menu shortcut turns VoiceView off. See [verification results](../docs/VERIFICATION.md) for tested behavior and remaining limits.

@@ -28,4 +28,4 @@ On the prepared Windows computer, `Start-Cinemastamps-Demo.ps1` launches the exi
 
 Do not describe this as physical Fire TV testing or claim that timestamped video review was invented here. The demonstrated distinction is remote reactions plus a private companion and export, implemented as a native Vega TV application.
 
-Film: Sintel trailer, copyright 2010 Blender Foundation, CC BY 3.0. See `THIRD_PARTY_NOTICES.md`. The recording's narration is separate from film audio; audible TV output was not verified through noVNC.
+Film: Sintel trailer, copyright 2010 Blender Foundation, CC BY 3.0. See `THIRD_PARTY_NOTICES.md`. The recording's narration is separate from film audio. Follow-up tests captured native movie and VoiceView sound directly from the simulator's PulseAudio output; noVNC itself does not transmit audio. See `VERIFICATION.md` for evidence and limits.

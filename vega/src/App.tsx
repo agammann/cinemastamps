@@ -32,6 +32,7 @@ const DEFAULT_BASE = 'http://10.0.2.2:8091';
 const COLORS = {great: '#a9e68e', dragging: '#f1cc7b', confusing: '#c4aff5'};
 type ButtonProps = {
   label: string;
+  spokenLabel?: string;
   onPress: () => void;
   scale: number;
   color?: string;
@@ -41,6 +42,7 @@ type ButtonProps = {
 };
 function Button({
   label,
+  spokenLabel,
   onPress,
   scale,
   color,
@@ -51,8 +53,10 @@ function Button({
   const [focus, setFocus] = useState(false);
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
+      role="button"
+      aria-label={spokenLabel || label}
+      aria-disabled={!!disabled}
+      aria-selected={active}
       disabled={disabled}
       hasTVPreferredFocus={preferred && !disabled}
       onFocus={() => setFocus(true)}
@@ -99,6 +103,9 @@ export const App = () => {
   const [playing, setPlaying] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
   const [filter, setFilter] = useState<Kind | 'all'>('all');
+  const [recovery, setRecovery] = useState({key: '', attempt: 0, resumeAt: 0});
+  const playbackKey = `${connection?.token}:${review?.source.id}`;
+  const recoveryAttempt = recovery.key === playbackKey ? recovery.attempt : 0;
   const pending = useRef(0);
   const queue = useRef(Promise.resolve());
   const alive = useRef(true);
@@ -203,7 +210,7 @@ export const App = () => {
     setTime(0);
     setDuration(0);
     setPlaying(false);
-  }, [review?.source.id, connection?.token]);
+  }, [review?.source.id, connection?.token, recoveryAttempt]);
   const togglePlay = useCallback(() => {
     const video = player.current;
     if (!video || !ready) return;
@@ -307,7 +314,7 @@ export const App = () => {
   ) => <Button label={label} onPress={onPress} scale={scale} {...props} />;
   return (
     <View style={s.root}>
-      <View style={s.header}>
+      <View style={s.header} aria-hidden={!!modal}>
         <Text style={s.brand}>Cinemastamps</Text>
         <View style={s.buttons}>
           {renderButton(
@@ -326,7 +333,7 @@ export const App = () => {
           )}
         </View>
       </View>
-      <View style={s.intro}>
+      <View style={s.intro} aria-hidden={!!modal}>
         <Text style={s.title}>
           {review?.source.name || 'Your next screening starts here.'}
         </Text>
@@ -335,18 +342,35 @@ export const App = () => {
             'Watch together. Leave feedback that stays with the moment.'}
         </Text>
       </View>
-      <View style={s.body}>
+      <View style={s.body} aria-hidden={!!modal}>
         <View style={s.stage}>
           <View style={s.video}>
             {connection && review && (
               <NativePlayer
-                key={`${connection.token}:${review.source.id}`}
+                key={`${playbackKey}:${recoveryAttempt}`}
                 connection={connection}
                 sourceId={review.source.id}
                 player={player}
+                resumeAt={recoveryAttempt ? recovery.resumeAt : undefined}
+                onStall={(position) => {
+                  if (!recoveryAttempt) {
+                    setMessage('Recovering playback. Your stamps are saved.');
+                    setRecovery({
+                      key: playbackKey,
+                      attempt: 1,
+                      resumeAt: position,
+                    });
+                  } else {
+                    setMessage(
+                      'Playback stalled. Open Settings and choose Reload player.',
+                    );
+                  }
+                }}
                 onStatus={(value, isReady) => {
                   setStatus(value);
                   setReady(isReady);
+                  if (isReady && recoveryAttempt)
+                    setMessage('Player reloaded. Your stamps are saved.');
                 }}
                 onTick={(position, length, active) => {
                   setTime(position);
@@ -362,9 +386,11 @@ export const App = () => {
               disabled: !ready || !!modal,
             })}
             {renderButton('−10s', () => seek(-10), {
+              spokenLabel: 'Rewind 10 seconds',
               disabled: !ready || !!modal,
             })}
             {renderButton('+10s', () => seek(10), {
+              spokenLabel: 'Forward 10 seconds',
               disabled: !ready || !!modal,
             })}
             <Text style={s.time}>
@@ -419,6 +445,9 @@ export const App = () => {
                         : '?'
                     }
                     scale={scale * 0.78}
+                    spokenLabel={
+                      kind === 'all' ? 'All reactions' : labels[kind]
+                    }
                     active={filter === kind}
                     disabled={!!modal}
                     onPress={() => setFilter(kind)}
@@ -449,8 +478,11 @@ export const App = () => {
           {renderButton('Export review', showPair, {disabled: !!modal})}
         </View>
       </View>
-      <View style={s.footer}>
-        <Text style={[s.small, error ? s.error : undefined]} numberOfLines={1}>
+      <View style={s.footer} aria-hidden={!!modal}>
+        <Text
+          aria-live="polite"
+          style={[s.small, error ? s.error : undefined]}
+          numberOfLines={1}>
           {error || message}
         </Text>
         <Text style={s.credit}>
@@ -470,7 +502,7 @@ export const App = () => {
                   below.
                 </Text>
                 <TextInput
-                  accessibilityLabel="Companion service address"
+                  aria-label="Companion service address"
                   style={s.input}
                   value={service}
                   onChangeText={setService}
@@ -487,6 +519,16 @@ export const App = () => {
                     preferred: true,
                   })}
                   {connection && renderButton('Cancel', () => setModal(null))}
+                  {connection &&
+                    renderButton('Reload player', () => {
+                      setError('');
+                      setModal(null);
+                      setRecovery({
+                        key: playbackKey,
+                        attempt: recoveryAttempt + 1,
+                        resumeAt: time,
+                      });
+                    })}
                 </View>
               </>
             ) : (
@@ -497,7 +539,7 @@ export const App = () => {
                 <View style={s.pairRow}>
                   {pair ? (
                     <Image
-                      accessibilityLabel="Private companion QR code"
+                      aria-label="Private companion QR code"
                       source={{uri: pair.qr}}
                       style={s.qr}
                     />
@@ -550,10 +592,11 @@ function StampCard({
   const [focus, setFocus] = useState(false);
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Jump to ${timecode(item.time)}, ${
-        labels[item.kind]
+      role="button"
+      aria-label={`Jump to ${timecode(item.time)}, ${labels[item.kind]}${
+        item.note ? `. ${item.note}` : ''
       }`}
+      aria-disabled={disabled}
       disabled={disabled}
       onPress={onPress}
       onFocus={() => setFocus(true)}
