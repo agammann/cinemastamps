@@ -1,5 +1,11 @@
 # Cinemastamps verification
 
+## Completed simulator demo route
+
+The hackathon target is the native Vega app demonstrated on Amazon's official Vega Virtual Device. The [Fire TV submission rules](https://amazonappdev2026.devpost.com/rules) accept a demonstration on an actual Fire TV device or the Fire TV/Vega simulator. Cinemastamps uses the simulator option. Physical hardware testing is not a remaining requirement for this submission.
+
+The results below record the actual tested environments and observed behavior. Optional physical-device distribution work for the separate Android implementation appears at the end of the historical verification record.
+
 ## Version 0.2.2: remote controls and outage recovery — September 30, 2026
 
 Follow-up testing used the same official Vega Virtual Device, OS 1.2 TV Ship/102401320, SDK 0.24.12112, and Docker-hosted companion described below.
@@ -22,9 +28,9 @@ Verified results:
 
 An intermediate 0.2.2 build encountered a startup playback stall and visibly recovered through the existing bounded player reload, then advanced normally. The final build's cold-start run did not stall. This is evidence of the recovery path operating on the simulator, not a fix for the unconfirmed underlying stall cause.
 
-At the beginning of this follow-up, the browser showed an old app frame after the platform had terminated its process. Device logs attributed that termination to virtual-display disconnection. Relaunching recovered the saved review. Long unattended simulator operation and physical-device sleep/wake remain unverified. Simulator logs also contain recurring SDK "Application data root path is not set" diagnostics; saved-review persistence passed despite those messages. No clean platform-log claim is made.
+At the beginning of this follow-up, the browser showed an old app frame after the platform had terminated its process. Device logs attributed that termination to virtual-display disconnection. Relaunching recovered the saved review. Long unattended simulator operation remains outside this verification pass. Simulator logs also contain recurring SDK "Application data root path is not set" diagnostics; saved-review persistence passed despite those messages. No clean platform-log claim is made.
 
-Physical Fire TV, physical remote buttons, HDMI/speaker behavior, and a real phone remain untested. The focused VoiceView evidence below was collected with 0.2.1; it was not repeated for this update.
+This pass exercised the simulator's remote input, captured its host audio, and used the companion in a browser, including a phone-size viewport. The focused VoiceView evidence below was collected with 0.2.1; it was not repeated for this update.
 
 The final filter-adjusted package was rebuilt for all three architectures and reinstalled on x86_64. Its saved review survived the update, filtering returned correctly to the full screening list, and remote playback advanced to 28 seconds before being paused.
 
@@ -152,7 +158,9 @@ The concept and rendered screenshot were inspected at the concept's native 1672 
 
 No clipping or horizontal overflow was observed in the tested layouts. The implementation follows the selected design with the functional deviations above; it is not a pixel-identical rendering of the illustrative video still.
 
-## Remaining physical-device and publishing checks
+## Optional Android hardware and Appstore work
+
+These checks concern future physical-device distribution of the earlier Android APK. They are separate from the completed native Vega simulator submission.
 
 1. Install this APK on an actual Fire OS device and test its Amazon WebView, codecs, remote, sound, sleep/wake, and memory behavior.
 2. Verify the phone flow on the actual TV/phone Wi-Fi network; emulator networking and a browser-sized phone view are not substitutes for that hardware check.

@@ -8,7 +8,9 @@ Created by agammann.
 
 ![Cinemastamps running on the Vega Virtual Device](docs/screenshots/vega-screening.png)
 
-**Version 0.2.2:** the native React Native app runs on Amazon's official Vega Virtual Device. Playback, remote stamping, review filters, companion notes, uploads, export, and restart persistence were exercised there. Follow-up testing captured actual simulator audio and exercised VoiceView navigation and speech. This update fixes duplicate remote media commands, preserves pairing after a companion outage, and restores all reactions when leaving a filtered review. Installable packages are in [Releases](https://github.com/agammann/cinemastamps/releases), with detailed evidence and limits in [Verification](docs/VERIFICATION.md). Physical Fire TV hardware remains untested.
+**Version 0.2.2:** the native React Native app runs on Amazon's official Vega Virtual Device. Playback, remote stamping, review filters, companion notes, uploads, export, and restart persistence were exercised there. Follow-up testing captured actual simulator audio and exercised VoiceView navigation and speech. This update fixes duplicate remote media commands, preserves pairing after a companion outage, and restores all reactions when leaving a filtered review. Installable packages are in [Releases](https://github.com/agammann/cinemastamps/releases), with detailed evidence in [Verification](docs/VERIFICATION.md).
+
+**Completed hackathon demo route:** Cinemastamps is demonstrated on the official Vega simulator. The [Fire TV track rules](https://amazonappdev2026.devpost.com/rules) accept a demo running on an actual Fire TV device or the Fire TV/Vega simulator. This project uses the simulator option; physical hardware testing is not an outstanding submission requirement.
 
 ## Run the Vega demo
 
@@ -101,7 +103,7 @@ pnpm test
 pnpm build
 ```
 
-See [verification notes](docs/VERIFICATION.md) for the exact tested environments, completed workflows, and remaining hardware checks. A browser or standard Android TV emulator result is not proof of Fire TV hardware compatibility or a qualifying hackathon demo.
+See [verification notes](docs/VERIFICATION.md) for the exact tested environments, completed workflows, and observed simulator behavior. The submitted demonstration uses the native Vega app on the official Vega Virtual Device. Browser and Android TV emulator results document the additional implementations.
 
 ## Structure
 
