@@ -37,11 +37,17 @@ For a phone or physical TV, set `BIND_ADDRESS` to your computer's LAN address an
 
 ## Run on a computer
 
+The current browser source restores every reaction when leaving a filtered Review
+view. The filter remains selected when you return to Review. This browser correction
+is documented separately from the native package verification below.
+
 Use Node.js 22.12+ and pnpm 11. Dependencies and versions are recorded in `pnpm-lock.yaml`.
 
 If pnpm is not installed, run `npm install -g pnpm@11` once.
 
 ```sh
+git clone https://github.com/agammann/cinemastamps.git
+cd cinemastamps
 pnpm install --frozen-lockfile
 pnpm build
 pnpm start
@@ -102,6 +108,9 @@ Playback timestamps are captured from the active player in seconds, including fr
 pnpm test
 pnpm build
 ```
+
+The native-media integration test needs FFmpeg and FFprobe on `PATH`; it is
+skipped when FFmpeg is absent. The Docker companion includes them.
 
 See [verification notes](docs/VERIFICATION.md) for the exact tested environments, completed workflows, and observed simulator behavior. The submitted demonstration uses the native Vega app on the official Vega Virtual Device. Browser and Android TV emulator results document the additional implementations.
 

@@ -11,7 +11,7 @@ export default function StampList({
 }) {
   const [filter, setFilter] = useState("all");
   const shown = ordered(stamps).filter(
-    (s) => filter === "all" || s.kind === filter,
+    (s) => !expanded || filter === "all" || s.kind === filter,
   );
   return (
     <section

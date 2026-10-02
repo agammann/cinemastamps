@@ -1,5 +1,35 @@
 # Cinemastamps verification
 
+## Browser source follow-up — October 2, 2026
+
+A fresh Windows checkout passed the frozen pnpm install, production build, and
+all 12 model/API/media/playback/connection tests without skips using Node 24.19.0,
+pnpm 11.19.0, and FFmpeg/FFprobe 9.0.2. The media test exercised real H.264/AAC
+fragmented MP4 preparation and caching. No Docker container was used in this pass.
+
+The browser still applied its Review reaction filter after returning to Screening
+room, where the filter controls were hidden. With three saved reactions, selecting
+Dragging and returning to Screening room showed only one row. Filtering now applies
+only in Review, matching the existing native behavior; all three rows reappear in
+Screening room, and the selected filter is retained on returning to Review.
+
+Actual production-bundle checks in Edge used a disposable local companion and
+isolated browser storage:
+
+- Bundled film playback, all three reactions, note editing, and reload persistence.
+- Filter/return behavior and a real CSV download retaining quoted multiline notes.
+- Pairing and synchronized notes between the screening page and a phone-size page.
+- Stopping the companion server retained the unsaved note and re-enabled Save;
+  restarting it saved the draft and synchronized the screening page.
+- Uploading the bundled film started a new review, played the uploaded video, and
+  preserved the new film and stamp across reload.
+- Desktop widths 1440 and 1280 and the 390-pixel companion fit without horizontal
+  overflow. No application page errors or external HTTP requests were observed.
+
+These checks used two browser pages on one computer, not a physical phone or TV.
+Vega simulator, VoiceView, Android APK installation, and hardware results below
+remain dated historical evidence; they were not rerun for this browser correction.
+
 ## Completed simulator demo route
 
 The hackathon target is the native Vega app demonstrated on Amazon's official Vega Virtual Device. The [Fire TV submission rules](https://amazonappdev2026.devpost.com/rules) accept a demonstration on an actual Fire TV device or the Fire TV/Vega simulator. Cinemastamps uses the simulator option. Physical hardware testing is not a remaining requirement for this submission.
