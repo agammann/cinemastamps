@@ -26,6 +26,7 @@ import {
 } from "../shared/model.mjs";
 
 const TOKEN = /^[a-f0-9]{48}$/;
+const UPLOAD_NAME = /^upload-[a-f0-9]{16}\.(mp4|webm)$/;
 const DAY = 24 * 60 * 60 * 1000;
 const MAX_UPLOAD_BYTES = 250 * 1024 * 1024;
 // FFmpeg can write one packet past -fs before the completed-file check runs.
@@ -50,6 +51,14 @@ export function createApp({
     const dir = path.resolve(root, token);
     if (path.dirname(dir) !== root) throw new Error('Invalid screening token.');
     return dir;
+  };
+  const uploadPath = (token, name) => {
+    if (typeof name !== 'string' || !UPLOAD_NAME.test(name))
+      throw new Error('Invalid uploaded video path.');
+    const dir = sessionDir(token);
+    const file = path.resolve(dir, name);
+    if (path.dirname(file) !== dir) throw new Error('Invalid uploaded video path.');
+    return file;
   };
   const directoryBytes = (dir) => {
     if (!existsSync(dir)) return 0;
@@ -175,6 +184,13 @@ export function createApp({
     legacyHeaders: false,
     message: { error: 'Too many video uploads. Try again shortly.' },
   });
+  const sessionRateLimit = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 10,
+    standardHeaders: false,
+    legacyHeaders: false,
+    message: { error: 'Too many screenings. Try again shortly.' },
+  });
   const prune = () => {
     for (const name of readdirSync(dataDir))
       if (TOKEN.test(name)) {
@@ -197,7 +213,7 @@ export function createApp({
       .map((i) => `http://${i.address}:${port}`);
     res.json({ name: "Cinemastamps", addresses, maxUploadMB: 250 });
   });
-  app.post("/api/sessions", (req, res) => {
+  app.post("/api/sessions", sessionRateLimit, (req, res) => {
     prune();
     if (readdirSync(dataDir).filter((x) => TOKEN.test(x)).length >= 50)
       return res
@@ -347,7 +363,7 @@ export function createApp({
     // Reload after streaming the upload so notes written during it are not lost.
     const current = get(req.token);
     if (!current) {
-      rmSync(req.file.path, { force: true });
+      rmSync(uploadPath(req.token, uploadsInFlight.get(req.token)), { force: true });
       return res.status(401).json({ error: "Session expired. Pair again." });
     }
     const review = newReview({
@@ -392,10 +408,10 @@ export function createApp({
     cleanupMedia(req.token, review);
     res.json(review);
   });
-  app.get("/api/video", auth, (req, res) => {
+  app.get("/api/video", auth, nativeRateLimit, (req, res) => {
     if (req.review.source.kind !== "upload")
       return res.status(404).json({ error: "No uploaded video." });
-    res.sendFile(path.resolve(sessionDir(req.token), req.review.source.file));
+    res.sendFile(uploadPath(req.token, req.review.source.file));
   });
   app.get("/api/export/:format", auth, (req, res) => {
     const format = req.params.format;

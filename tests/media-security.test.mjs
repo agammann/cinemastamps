@@ -158,6 +158,89 @@ test('expensive media routes enforce per-screening request limits', async () => 
   } finally { await close(); }
 });
 
+test('session creation is bounded before pruning and remains available within the limit', async () => {
+  const { dataDir, base, close } = await companion();
+  try {
+    for (let i = 0; i < 10; i++)
+      assert.equal((await fetch(`${base}/api/sessions`, { method: 'POST' })).status, 201);
+    const blocked = await fetch(`${base}/api/sessions`, { method: 'POST' });
+    assert.equal(blocked.status, 429);
+    assert.match((await blocked.json()).error, /Too many screenings/);
+    assert.equal(readdirSync(dataDir).length, 10);
+  } finally { await close(); }
+});
+
+test('uploaded video playback is bounded per screening and another screening can still play', async () => {
+  const { base, close } = await companion();
+  try {
+    const first = await createSession(base);
+    const second = await createSession(base);
+    for (const token of [first, second])
+      assert.equal((await upload(base, token, Buffer.from('sample-video'))).status, 200);
+    const headers = { Authorization: `Bearer ${first}` };
+    const normal = await fetch(`${base}/api/video`, { headers });
+    assert.equal(normal.status, 200);
+    assert.equal(await normal.text(), 'sample-video');
+    for (let i = 1; i < 120; i++) {
+      const response = await fetch(`${base}/api/video`, { headers: { ...headers, Range: 'bytes=0-0' } });
+      assert.equal(response.status, 206);
+      await response.arrayBuffer();
+    }
+    const blocked = await fetch(`${base}/api/video`, { headers });
+    assert.equal(blocked.status, 429);
+    assert.match((await blocked.json()).error, /Too many playback requests/);
+    const other = await fetch(`${base}/api/video`, { headers: { Authorization: `Bearer ${second}` } });
+    assert.equal(other.status, 200);
+    assert.equal(await other.text(), 'sample-video');
+  } finally { await close(); }
+});
+
+test('upload paths stay inside their screening during expired-upload cleanup and playback', async () => {
+  const { root, dataDir, base, close } = await companion();
+  try {
+    const token = await createSession(base);
+    const outside = path.join(root, 'outside.mp4');
+    writeFileSync(outside, 'outside-marker');
+    const boundary = 'cinema-expired-upload';
+    const start = Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="video"; filename="../../outside.mp4"\r\nContent-Type: video/mp4\r\n\r\n`);
+    const end = Buffer.from(`\r\n--${boundary}--\r\n`);
+    let finish;
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(Buffer.concat([start, Buffer.from('sample-video')]));
+        finish = () => { controller.enqueue(end); controller.close(); };
+      },
+    });
+    const pending = fetch(`${base}/api/video`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+      body, duplex: 'half',
+    });
+    const dir = path.join(dataDir, token);
+    try {
+      await waitFor(() => mediaFiles(dir).length === 1);
+      const reviewPath = path.join(dir, 'review.json');
+      const review = JSON.parse(readFileSync(reviewPath, 'utf8'));
+      review.startedAt = Date.now() - 25 * 60 * 60 * 1000;
+      writeFileSync(reviewPath, JSON.stringify(review));
+    } finally { finish(); }
+    assert.equal((await pending).status, 401);
+    await waitFor(() => mediaFiles(dir).length === 0);
+    assert.equal(readFileSync(outside, 'utf8'), 'outside-marker');
+
+    const fresh = await createSession(base);
+    assert.equal((await upload(base, fresh, Buffer.from('safe-video'))).status, 200);
+    const freshDir = path.join(dataDir, fresh);
+    const reviewPath = path.join(freshDir, 'review.json');
+    const review = JSON.parse(readFileSync(reviewPath, 'utf8'));
+    review.source.file = '../../outside.mp4';
+    writeFileSync(reviewPath, JSON.stringify(review));
+    const rejected = await fetch(`${base}/api/video`, { headers: { Authorization: `Bearer ${fresh}` } });
+    assert.equal(rejected.status, 400);
+    assert.deepEqual(await rejected.json(), { error: 'Invalid uploaded video path.' });
+    assert.equal(readFileSync(outside, 'utf8'), 'outside-marker');
+  } finally { await close(); }
+});
+
 let ffmpeg = true;
 try { execFileSync('ffmpeg', ['-version'], { stdio: 'ignore' }); } catch { ffmpeg = false; }
 test('native conversion rejects disguised local playlists and prepares real MP4 and WebM', {
