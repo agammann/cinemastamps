@@ -42,7 +42,7 @@
     "@types/jest": "^29.5.14",
     "@types/react": "^19.2.0",
     "@types/react-test-renderer": "^19.1.0",
-    "@typescript-eslint/eslint-plugin": "^6.5.0",
+    "@typescript-eslint/eslint-plugin": "^8.71.2",
     "babel-jest": "^29.7.0",
     "braces": "file:vendor/braces",
     "eslint": "^8.57.1",
