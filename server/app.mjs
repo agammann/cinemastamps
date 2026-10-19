@@ -9,6 +9,7 @@ import {
   renameSync,
   rmSync,
   readdirSync,
+  statSync,
 } from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -25,9 +26,66 @@ import {
 
 const TOKEN = /^[a-f0-9]{48}$/;
 const DAY = 24 * 60 * 60 * 1000;
-export function createApp({ dataDir, webDir, port = 4318, publicBase = "" }) {
+const MAX_UPLOAD_BYTES = 250 * 1024 * 1024;
+// FFmpeg can write one packet past -fs before the completed-file check runs.
+const MAX_NATIVE_BYTES = 40 * 1024 * 1024;
+const SESSION_STORAGE_BYTES = 550 * 1024 * 1024;
+const INSTANCE_STORAGE_BYTES = 2 * 1024 * 1024 * 1024;
+const storageError = (message) => Object.assign(new Error(message), { code: 'STORAGE_LIMIT' });
+export function createApp({
+  dataDir, webDir, port = 4318, publicBase = "",
+  maxUploadBytes = MAX_UPLOAD_BYTES,
+  maxSessionStorageBytes = SESSION_STORAGE_BYTES,
+  maxInstanceStorageBytes = INSTANCE_STORAGE_BYTES,
+  pruneIntervalMs = 60 * 60 * 1000,
+}) {
   mkdirSync(dataDir, { recursive: true });
   const app = express();
+  const uploadsInFlight = new Map();
+  const nativeInFlight = new Map();
+  const directoryBytes = (dir) => {
+    if (!existsSync(dir)) return 0;
+    return readdirSync(dir, { withFileTypes: true }).reduce((sum, entry) =>
+      sum + (entry.isFile() && existsSync(path.join(dir, entry.name))
+        ? statSync(path.join(dir, entry.name)).size : 0), 0);
+  };
+  const reservedBytes = (token) =>
+    (uploadsInFlight.has(token) ? maxUploadBytes : 0) +
+    [...nativeInFlight.values()].filter((owner) => owner === token).length * MAX_NATIVE_BYTES;
+  const assertCapacity = (token, additional) => {
+    const sessionBytes = directoryBytes(path.join(dataDir, token));
+    if (sessionBytes + reservedBytes(token) + additional > maxSessionStorageBytes)
+      throw storageError('This screening has reached its storage limit. Export it and start a new screening.');
+    const usedBytes = readdirSync(dataDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && TOKEN.test(entry.name))
+      .reduce((sum, entry) => sum + directoryBytes(path.join(dataDir, entry.name)), 0);
+    const pendingBytes = [...uploadsInFlight.keys()].length * maxUploadBytes + nativeInFlight.size * MAX_NATIVE_BYTES;
+    if (usedBytes + pendingBytes + additional > maxInstanceStorageBytes)
+      throw storageError('The companion has reached its storage limit. Try again after an old screening expires.');
+  };
+  const cleanupMedia = (token, review) => {
+    const dir = path.join(dataDir, token);
+    if (!existsSync(dir)) return;
+    const keepUpload = review?.source.kind === 'upload' ? review.source.file : null;
+    const keepNative = ['demo', 'upload'].includes(review?.source.kind)
+      ? `native-${review.source.id}.mp4` : null;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isFile()) continue;
+      const name = entry.name;
+      const uploadFile = /^upload-[a-f0-9]{16}\.(mp4|webm)$/.test(name);
+      const nativeFile = /^native-(sintel-demo|[a-f0-9]{16})\.mp4(\.tmp\.mp4)?$/.test(name);
+      if (!uploadFile && !nativeFile) continue;
+      if (name === keepUpload || name === uploadsInFlight.get(token)) continue;
+      if (name === keepNative || name === `${keepNative}.tmp.mp4`) continue;
+      if (nativeFile && [...nativeInFlight.keys()].some((output) =>
+        path.dirname(output) === dir && (name === path.basename(output) || name === path.basename(output) + '.tmp.mp4'))) continue;
+      rmSync(path.join(dir, name), { force: true });
+    }
+  };
+  const cleanupAfterResponse = (token) => {
+    try { cleanupMedia(token, get(token)); }
+    catch (error) { console.error('Could not remove old companion media:', error); }
+  };
   app.disable("x-powered-by");
   app.use((req, res, next) => {
     res.set("X-Content-Type-Options", "nosniff");
@@ -60,7 +118,9 @@ export function createApp({ dataDir, webDir, port = 4318, publicBase = "" }) {
   const save = (token, review) => {
     const dir = sessionDir(token);
     mkdirSync(dir, { recursive: true });
-    writeFileSync(path.join(dir, "review.tmp"), JSON.stringify(review));
+    const serialized = JSON.stringify(review);
+    assertCapacity(token, Buffer.byteLength(serialized));
+    writeFileSync(path.join(dir, "review.tmp"), serialized);
     renameSync(path.join(dir, "review.tmp"), path.join(dir, "review.json"));
   };
   const get = (token) => {
@@ -93,9 +153,19 @@ export function createApp({ dataDir, webDir, port = 4318, publicBase = "" }) {
   };
   const prune = () => {
     for (const name of readdirSync(dataDir))
-      if (TOKEN.test(name) && !get(name))
-        rmSync(sessionDir(name), { recursive: true, force: true });
+      if (TOKEN.test(name)) {
+        if (uploadsInFlight.has(name) || [...nativeInFlight.values()].includes(name)) continue;
+        const review = get(name);
+        if (!review) rmSync(sessionDir(name), { recursive: true, force: true });
+        else cleanupMedia(name, review);
+      }
   };
+  prune();
+  const maintenance = setInterval(() => {
+    try { prune(); } catch (error) { console.error('Could not prune companion media:', error); }
+  }, pruneIntervalMs);
+  maintenance.unref();
+  app.locals.stopMaintenance = () => clearInterval(maintenance);
   app.get("/api/health", (req, res) => {
     const addresses = Object.values(os.networkInterfaces())
       .flat()
@@ -146,8 +216,21 @@ export function createApp({ dataDir, webDir, port = 4318, publicBase = "" }) {
   app.get("/api/native/media", auth, async (req, res) => {
     if (req.query.source !== req.review.source.id) return res.status(409).json({ error: 'The film changed. Refresh this screening.' });
     const { input, output } = nativePaths(req.review, sessionDir(req.token), webDir);
-    await prepareNativeMedia(input, output);
-    if (get(req.token)?.source.id !== req.query.source) return res.status(409).json({ error: 'The film changed while preparing playback.' });
+    const reserved = !existsSync(output) && !nativeInFlight.has(output);
+    if (reserved) {
+      assertCapacity(req.token, MAX_NATIVE_BYTES);
+      nativeInFlight.set(output, req.token);
+    }
+    try { await prepareNativeMedia(input, output); }
+    finally {
+      if (reserved) nativeInFlight.delete(output);
+      cleanupMedia(req.token, get(req.token));
+    }
+    if (get(req.token)?.source.id !== req.query.source) {
+      cleanupMedia(req.token, get(req.token));
+      return res.status(409).json({ error: 'The film changed while preparing playback.' });
+    }
+    res.once('close', () => cleanupAfterResponse(req.token));
     res.set('Cache-Control', 'private, no-store').type('video/mp4').sendFile(path.resolve(output));
   });
   app.put("/api/position", auth, (req, res) => {
@@ -208,13 +291,13 @@ export function createApp({ dataDir, webDir, port = 4318, publicBase = "" }) {
   const upload = multer({
     storage: multer.diskStorage({
       destination: (req, file, cb) => cb(null, sessionDir(req.token)),
-      filename: (req, file, cb) =>
-        cb(
-          null,
-          `upload-${randomBytes(8).toString("hex")}${path.extname(file.originalname).toLowerCase()}`,
-        ),
+      filename: (req, file, cb) => {
+        const name = `upload-${randomBytes(8).toString("hex")}${path.extname(file.originalname).toLowerCase()}`;
+        uploadsInFlight.set(req.token, name);
+        cb(null, name);
+      },
     }),
-    limits: { fileSize: 250 * 1024 * 1024, files: 1 },
+    limits: { fileSize: maxUploadBytes, files: 1 },
     fileFilter: (req, file, cb) =>
       cb(
         /\.(mp4|webm)$/i.test(file.originalname)
@@ -223,7 +306,18 @@ export function createApp({ dataDir, webDir, port = 4318, publicBase = "" }) {
         /\.(mp4|webm)$/i.test(file.originalname),
       ),
   });
-  app.post("/api/video", auth, upload.single("video"), (req, res) => {
+  const reserveUpload = (req, res, next) => {
+    if (uploadsInFlight.has(req.token))
+      return res.status(409).json({ error: 'A video is already uploading to this screening.' });
+    assertCapacity(req.token, maxUploadBytes);
+    uploadsInFlight.set(req.token, null);
+    res.once('close', () => {
+      uploadsInFlight.delete(req.token);
+      cleanupAfterResponse(req.token);
+    });
+    next();
+  };
+  app.post("/api/video", auth, reserveUpload, upload.single("video"), (req, res) => {
     if (!req.file)
       return res.status(400).json({ error: "Choose a video first." });
     // Reload after streaming the upload so notes written during it are not lost.
@@ -232,10 +326,6 @@ export function createApp({ dataDir, webDir, port = 4318, publicBase = "" }) {
       rmSync(req.file.path, { force: true });
       return res.status(401).json({ error: "Session expired. Pair again." });
     }
-    if (current.source.kind === "upload")
-      rmSync(path.join(sessionDir(req.token), current.source.file), {
-        force: true,
-      });
     const review = newReview({
       id: randomBytes(8).toString("hex"),
       kind: "upload",
@@ -246,9 +336,12 @@ export function createApp({ dataDir, webDir, port = 4318, publicBase = "" }) {
     review.position = 0;
     review.revision = current.revision + 1;
     save(req.token, review);
+    cleanupMedia(req.token, review);
     res.json(review);
   });
   app.put("/api/source", auth, (req, res) => {
+    if (uploadsInFlight.has(req.token))
+      return res.status(409).json({ error: 'Wait for the video upload to finish.' });
     let source;
     try {
       source =
@@ -272,6 +365,7 @@ export function createApp({ dataDir, webDir, port = 4318, publicBase = "" }) {
       revision: req.review.revision + 1,
     };
     save(req.token, review);
+    cleanupMedia(req.token, review);
     res.json(review);
   });
   app.get("/api/video", auth, (req, res) => {
@@ -293,9 +387,9 @@ export function createApp({ dataDir, webDir, port = 4318, publicBase = "" }) {
     if (res.headersSent) return next(err);
     const message =
       err.code === "LIMIT_FILE_SIZE"
-        ? "Video must be smaller than 250 MB."
+        ? `Video must be smaller than ${Math.ceil(maxUploadBytes / 1024 / 1024)} MB.`
         : err.message || "Request failed.";
-    res.status(400).json({ error: message });
+    res.status(err.code === 'STORAGE_LIMIT' ? 507 : 400).json({ error: message });
   });
   return app;
 }
