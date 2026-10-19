@@ -1,4 +1,5 @@
 import express from "express";
+import { rateLimit } from 'express-rate-limit';
 import multer from "multer";
 import { randomBytes } from "node:crypto";
 import {
@@ -43,6 +44,13 @@ export function createApp({
   const app = express();
   const uploadsInFlight = new Map();
   const nativeInFlight = new Map();
+  const sessionDir = (token) => {
+    if (typeof token !== 'string' || !TOKEN.test(token)) throw new Error('Invalid screening token.');
+    const root = path.resolve(dataDir);
+    const dir = path.resolve(root, token);
+    if (path.dirname(dir) !== root) throw new Error('Invalid screening token.');
+    return dir;
+  };
   const directoryBytes = (dir) => {
     if (!existsSync(dir)) return 0;
     return readdirSync(dir, { withFileTypes: true }).reduce((sum, entry) =>
@@ -53,18 +61,18 @@ export function createApp({
     (uploadsInFlight.has(token) ? maxUploadBytes : 0) +
     [...nativeInFlight.values()].filter((owner) => owner === token).length * MAX_NATIVE_BYTES;
   const assertCapacity = (token, additional) => {
-    const sessionBytes = directoryBytes(path.join(dataDir, token));
+    const sessionBytes = directoryBytes(sessionDir(token));
     if (sessionBytes + reservedBytes(token) + additional > maxSessionStorageBytes)
       throw storageError('This screening has reached its storage limit. Export it and start a new screening.');
     const usedBytes = readdirSync(dataDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && TOKEN.test(entry.name))
-      .reduce((sum, entry) => sum + directoryBytes(path.join(dataDir, entry.name)), 0);
+      .reduce((sum, entry) => sum + directoryBytes(sessionDir(entry.name)), 0);
     const pendingBytes = [...uploadsInFlight.keys()].length * maxUploadBytes + nativeInFlight.size * MAX_NATIVE_BYTES;
     if (usedBytes + pendingBytes + additional > maxInstanceStorageBytes)
       throw storageError('The companion has reached its storage limit. Try again after an old screening expires.');
   };
   const cleanupMedia = (token, review) => {
-    const dir = path.join(dataDir, token);
+    const dir = sessionDir(token);
     if (!existsSync(dir)) return;
     const keepUpload = review?.source.kind === 'upload' ? review.source.file : null;
     const keepNative = ['demo', 'upload'].includes(review?.source.kind)
@@ -114,7 +122,6 @@ export function createApp({
     next();
   });
   app.use(express.json({ limit: "512kb" }));
-  const sessionDir = (token) => path.join(dataDir, token);
   const save = (token, review) => {
     const dir = sessionDir(token);
     mkdirSync(dir, { recursive: true });
@@ -136,10 +143,11 @@ export function createApp({
     }
   };
   const auth = (req, res, next) => {
-    const token =
+    const offeredToken =
       req.headers.authorization?.replace(/^Bearer /, "") ||
       (req.path === "/api/video" ? req.query.token : "");
-    const session = get(token);
+    const token = typeof offeredToken === 'string' ? TOKEN.exec(offeredToken)?.[0] : null;
+    const session = token && get(token);
     if (!session)
       return res
         .status(401)
@@ -151,6 +159,22 @@ export function createApp({
     req.review = session;
     next();
   };
+  const nativeRateLimit = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 120,
+    keyGenerator: (req) => req.token,
+    standardHeaders: false,
+    legacyHeaders: false,
+    message: { error: 'Too many playback requests. Try again shortly.' },
+  });
+  const uploadRateLimit = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 10,
+    keyGenerator: (req) => req.token,
+    standardHeaders: false,
+    legacyHeaders: false,
+    message: { error: 'Too many video uploads. Try again shortly.' },
+  });
   const prune = () => {
     for (const name of readdirSync(dataDir))
       if (TOKEN.test(name)) {
@@ -213,7 +237,7 @@ export function createApp({
     const url = `${base.replace(/\/$/, '')}/?companion=1#token=${req.token}`;
     res.set('Cache-Control', 'no-store').json({ url, qr: await QRCode.toDataURL(url, { width: 360, margin: 2 }) });
   });
-  app.get("/api/native/media", auth, async (req, res) => {
+  app.get("/api/native/media", auth, nativeRateLimit, async (req, res) => {
     if (req.query.source !== req.review.source.id) return res.status(409).json({ error: 'The film changed. Refresh this screening.' });
     const { input, output } = nativePaths(req.review, sessionDir(req.token), webDir);
     const reserved = !existsSync(output) && !nativeInFlight.has(output);
@@ -317,7 +341,7 @@ export function createApp({
     });
     next();
   };
-  app.post("/api/video", auth, reserveUpload, upload.single("video"), (req, res) => {
+  app.post("/api/video", auth, uploadRateLimit, reserveUpload, upload.single("video"), (req, res) => {
     if (!req.file)
       return res.status(400).json({ error: "Choose a video first." });
     // Reload after streaming the upload so notes written during it are not lost.

@@ -139,6 +139,25 @@ test('one screening cannot overlap uploads or switch source during a stream', as
   } finally { await close(); }
 });
 
+test('expensive media routes enforce per-screening request limits', async () => {
+  const { base, close } = await companion();
+  try {
+    const token = await createSession(base);
+    for (let i = 0; i < 10; i++)
+      assert.equal((await upload(base, token, Buffer.from('invalid'), 'invalid.txt')).status, 400);
+    const blockedUpload = await upload(base, token, Buffer.from('invalid'), 'invalid.txt');
+    assert.equal(blockedUpload.status, 429);
+    assert.match((await blockedUpload.json()).error, /Too many video uploads/);
+    const other = await createSession(base);
+    assert.equal((await upload(base, other, Buffer.from('invalid'), 'invalid.txt')).status, 400);
+    for (let i = 0; i < 120; i++)
+      assert.equal((await fetch(`${base}/api/native/media?source=old`, { headers: { Authorization: `Bearer ${token}` } })).status, 409);
+    const blockedNative = await fetch(`${base}/api/native/media?source=old`, { headers: { Authorization: `Bearer ${token}` } });
+    assert.equal(blockedNative.status, 429);
+    assert.match((await blockedNative.json()).error, /Too many playback requests/);
+  } finally { await close(); }
+});
+
 let ffmpeg = true;
 try { execFileSync('ffmpeg', ['-version'], { stdio: 'ignore' }); } catch { ffmpeg = false; }
 test('native conversion rejects disguised local playlists and prepares real MP4 and WebM', {
