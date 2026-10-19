@@ -1,0 +1,15 @@
+{
+  "name": "@cinemastamps/braces",
+  "version": "3.0.3-cinemastamps.1",
+  "private": true,
+  "description": "Repository-local braces 3.0.3 with bounded parser and AST traversal",
+  "main": "index.js",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "dependencies": { "fill-range": "^7.1.1" },
+  "upstream": {
+    "name": "braces",
+    "version": "3.0.3",
+    "source": "https://registry.npmjs.org/braces/-/braces-3.0.3.tgz"
+  }
+}

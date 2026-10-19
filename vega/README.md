@@ -28,6 +28,19 @@ Version 3.1.5 still reproduced the nested extglob denial of service during local
 verification; 8.0.7 handles that input while preserving the tested glob APIs.
 Consumers already using minimatch 9 and 10 retain their respective major versions.
 
+The native graph uses the private, MIT-licensed patched copy in `vendor/braces`.
+It bounds brace/parenthesis nesting and direct AST traversal; both Prettier 2.8.8
+bundles use the same implementation through a version/hash-checked install hook.
+This is a repository-local patch, not an upstream patched release. The original
+license, source version and exact limits are documented beside the copy.
+Argparse consumers use 2.0.1, which removes the vulnerable `sprintf-js` dependency.
+A version/hash-checked compatibility hook preserves legacy `--version` output
+and the `Const` export used by Rushstack's TypeScript imports. Legacy CLI aliases
+remain supported; Rushstack's usage callback targets the current parser method.
+Help/error wording and deprecation warnings can differ.
+Security checks exercise real API Extractor, YAML, glob and formatter
+commands as well as malicious-input rejection. Keep install scripts enabled.
+
 Release output is under `build/{architecture}-release/`. Available architectures: x86_64 for the virtual device, aarch64 and armv7 for matching hardware. Hardware packages are built but not device-tested.
 
 ## Run
