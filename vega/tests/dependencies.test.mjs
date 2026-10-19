@@ -106,9 +106,30 @@ test('patched dependency branches retain caller APIs and reject security trigger
   assert.deepEqual(merge({}, {kepler: {targets: ['tv']}}, {kepler: {appName: 'Cinemastamps'}}),
     {kepler: {targets: ['tv'], appName: 'Cinemastamps'}});
   assert.throws(() => require('lodash').template('', {imports: {'bad,key': 1}}));
-  for (const consumer of ['@microsoft/api-extractor', '@typescript-eslint/typescript-estree']) {
-    const consumerRequire = createRequire(require.resolve(`${consumer}/package.json`));
+  const lock = JSON.parse(readFileSync(path.join(root, 'package-lock.json')));
+  const allowedVersions = new Set(['8.0.7', '9.0.9', '10.2.6']);
+  for (const [location, metadata] of Object.entries(lock.packages)) {
+    if (location.endsWith('/minimatch')) {
+      assert.ok(allowedVersions.has(metadata.version), `${location}: unsafe locked version`);
+    }
+    if (!metadata.dependencies?.minimatch) continue;
+    const consumerManifest = path.join(root, location, 'package.json');
+    const consumerRequire = createRequire(consumerManifest);
     const dependency = consumerRequire('minimatch');
+    let directory = path.dirname(consumerRequire.resolve('minimatch'));
+    let installed;
+    while (directory !== path.dirname(directory)) {
+      try {
+        const metadata = JSON.parse(readFileSync(path.join(directory, 'package.json')));
+        if (metadata.name === 'minimatch') { installed = metadata.version; break; }
+      } catch {}
+      directory = path.dirname(directory);
+    }
+    assert.ok(allowedVersions.has(installed), `${location}: unsafe installed version ${installed}`);
+    const requested = metadata.dependencies.minimatch;
+    const expected = /^[~^]?10\./.test(requested) ? '10.2.6'
+      : /^[~^]?9\./.test(requested) ? '9.0.9' : '8.0.7';
+    assert.equal(installed, expected, `${location}: preserve the consumer's API branch`);
     const minimatch = typeof dependency === 'function' ? dependency : dependency.minimatch;
     assert.equal(minimatch('film.ts', '**/*.ts'), true);
     assert.equal(minimatch('src/film.tsx', '**/*.{ts,tsx}'), true);
@@ -120,7 +141,7 @@ test('patched dependency branches retain caller APIs and reject security trigger
     assert.equal(minimatch('abab', '*(*(*(a|b)))'), true);
     const child = execFileSync(process.execPath, ['-e', `
       const {createRequire} = require('node:module');
-      const requireFrom = createRequire(${JSON.stringify(require.resolve(`${consumer}/package.json`))});
+      const requireFrom = createRequire(${JSON.stringify(consumerManifest)});
       const dependency = requireFrom('minimatch');
       const match = typeof dependency === 'function' ? dependency : dependency.minimatch;
       if (match('a'.repeat(50), '*'.repeat(34) + 'z')) process.exit(1);
@@ -129,4 +150,12 @@ test('patched dependency branches retain caller APIs and reject security trigger
     assert.equal(child, '');
   }
   assert.ok(require('glob').sync('src/**/*.tsx', {cwd: root}).includes('src/App.tsx'));
+  const matchTasks = require('npm-run-all/lib/match-tasks');
+  assert.deepEqual(matchTasks(['build:release', 'test'], ['build:*']), ['build:release']);
+  assert.throws(() => matchTasks(['a'.repeat(18) + 'z'], ['*(*(*(a|b)))']), /Task not found/);
+  const TestExclude = require('test-exclude');
+  assert.equal(new TestExclude({cwd: root, include: ['src/**/*.tsx'], exclude: []})
+    .shouldInstrument(path.join(root, 'src/App.tsx')), true);
+  assert.equal(new TestExclude({relativePath: false, extension: [], include: ['*(*(*(a|b)))'], exclude: []})
+    .shouldInstrument('a'.repeat(18) + 'z'), false);
 });
