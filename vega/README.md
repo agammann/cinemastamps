@@ -9,11 +9,24 @@ From this directory, with the SDK environment active:
 ```sh
 npm ci
 npm test
+npm run test:security
 npm run lint
 npm run build:release
 ```
 
 `npm test` runs TypeScript checking. The root project's `pnpm test` covers the review model and companion API. The native media integration test also needs FFmpeg and FFprobe; the root Docker image includes both.
+
+`npm ci` also verifies and updates the TOML entry points embedded in the pinned
+Kepler ESLint plugin. Keep install scripts enabled: both bundles use the patched
+external parser while retaining every Kepler lint rule. The hook rejects any
+unexpected plugin version or bundle content so an upstream change requires review.
+`npm run test:security` exercises manifest privilege checks, malformed TOML,
+dependency compatibility, and the installation guard.
+
+Legacy minimatch consumers use 8.0.7, which retains the callable CommonJS API.
+Version 3.1.5 still reproduced the nested extglob denial of service during local
+verification; 8.0.7 handles that input while preserving the tested glob APIs.
+Consumers already using minimatch 9 and 10 retain their respective major versions.
 
 Release output is under `build/{architecture}-release/`. Available architectures: x86_64 for the virtual device, aarch64 and armv7 for matching hardware. Hardware packages are built but not device-tested.
 
