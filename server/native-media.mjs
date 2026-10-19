@@ -5,6 +5,15 @@ import path from 'node:path';
 const run = promisify(execFile);
 const MAX_BYTES = 32 * 1024 * 1024;
 
+function inputOptions(input) {
+  // Never auto-detect an uploaded playlist or script as a local video.
+  if (path.extname(input).toLowerCase() === '.mp4')
+    return ['-f', 'mov', '-enable_drefs', '0', '-use_absolute_path', '0'];
+  if (path.extname(input).toLowerCase() === '.webm')
+    return ['-f', 'matroska'];
+  throw new Error('This video could not be prepared. Use an MP4 or WebM with a video track.');
+}
+
 // Local, finite clips only. No network protocols or user-supplied command arguments.
 export function createNativeMedia() {
   const pending = new Map();
@@ -15,10 +24,11 @@ export function createNativeMedia() {
     const task = (async () => {
       const temporary = output + '.tmp.mp4';
       try {
-        const { stdout } = await run('ffprobe', ['-v', 'error', '-protocol_whitelist', 'file,pipe', '-show_entries', 'format=duration', '-of', 'json', input], { timeout: 15000 });
+        const options = inputOptions(input);
+        const { stdout } = await run('ffprobe', ['-v', 'error', '-protocol_whitelist', 'file,pipe', ...options, '-show_entries', 'format=duration', '-of', 'json', input], { timeout: 15000 });
         const duration = Number(JSON.parse(stdout).format?.duration);
         if (!Number.isFinite(duration) || duration <= 0 || duration > 300) throw new Error('Vega preview supports clips up to five minutes. Upload a shorter MP4 or WebM.');
-        await run('ffmpeg', ['-nostdin', '-y', '-v', 'error', '-protocol_whitelist', 'file,pipe', '-i', input,
+        await run('ffmpeg', ['-nostdin', '-y', '-v', 'error', '-protocol_whitelist', 'file,pipe', ...options, '-i', input,
           '-map', '0:v:0', '-map', '0:a:0?', '-vf', 'scale=960:540:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=960:540:(ow-iw)/2:(oh-ih)/2',
           '-c:v', 'libx264', '-preset', 'veryfast', '-profile:v', 'baseline', '-level:v', '3.1', '-pix_fmt', 'yuv420p', '-r', '24',
           '-b:v', '600k', '-maxrate', '800k', '-bufsize', '1600k', '-c:a', 'aac', '-b:a', '96k', '-ac', '2', '-ar', '48000',
