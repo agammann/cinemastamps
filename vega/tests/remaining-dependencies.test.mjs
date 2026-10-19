@@ -108,7 +108,8 @@ test('bounded braces preserves ordinary syntax, options, and real glob consumers
     assert.deepEqual(braces.expand(pattern), [pattern]);
   }
   const literal = '{'.repeat(200) + 'film' + '}'.repeat(200);
-  for (const pattern of [`"${literal}"`, literal.replace(/[{}]/g, '\\$&')]) {
+  const escapedLiteral = '\\{'.repeat(200) + 'film' + '\\}'.repeat(200);
+  for (const pattern of [`"${literal}"`, escapedLiteral]) {
     assert.deepEqual(braces.expand(pattern), [literal]);
     assert.equal(braces.stringify(braces.parse(pattern)), literal);
   }
