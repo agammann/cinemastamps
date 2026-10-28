@@ -1,0 +1,58 @@
+name: Verify Android APK
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          version: 11.25.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build && pnpm android:sync
+      - run: python scripts/test-verify-apk.py
+      - name: Use only the runner's provisioned JDK and Android SDK
+        run: |
+          test -x "$JAVA_HOME_21_X64/bin/java"
+          test -d "$ANDROID_HOME/platforms"
+          test -d "$ANDROID_HOME/build-tools"
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
+          mkdir -p reports
+          {
+            echo "Source: $GITHUB_SHA"
+            echo "Runner image: $ImageOS $ImageVersion"
+            "$JAVA_HOME_21_X64/bin/java" -version 2>&1
+            find "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools" -maxdepth 2 -name source.properties -exec cat {} \;
+          } > reports/android-environment.txt
+      - name: Compile APK without SDK downloads or license acceptance
+        working-directory: android
+        run: bash gradlew --no-daemon --console=plain -Pandroid.builder.sdkDownload=false assembleDebug
+      - name: Verify delivered APK and exact offline assets
+        run: |
+          python scripts/verify-apk.py --apk android/app/build/outputs/apk/debug/app-debug.apk --report reports/apk-contents.json
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose android/app/build/outputs/apk/debug/app-debug.apk > reports/apk-signature.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging android/app/build/outputs/apk/debug/app-debug.apk > reports/apk-badging.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: android-apk-${{ github.sha }}
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            reports/
+          if-no-files-found: error
+          retention-days: 14
