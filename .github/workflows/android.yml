@@ -16,9 +16,11 @@ jobs:
       - name: Prepare Java and Android SDK
         shell: bash
         run: |
-          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
-          echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37"
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --list --channel=3 | grep -iE 'platforms;android-(37|Cinnamon)' || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37"
       - name: Build and run unit tests
         working-directory: android
         run: ./gradlew --no-daemon assembleDebug testDebugUnitTest
