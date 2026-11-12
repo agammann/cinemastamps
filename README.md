@@ -67,7 +67,7 @@ Phone uploads support MP4 and WebM up to **250 MB**. H.264 video with AAC audio 
 
 ## Build and install on Fire OS
 
-The Android project uses Java, Gradle 9.3.1, Android Gradle Plugin 9.1.1, compile SDK 37, target SDK 35, and minimum API 25. Use a compatible JDK and an updated WebView. This is an APK for Fire OS; it is not a Vega OS package.
+The Android project uses Java, Gradle 9.8.2, Android Gradle Plugin 9.5.1, compile SDK 37, target SDK 35, and minimum API 25. Use JDK 21 and an updated WebView. This is an APK for Fire OS; it is not a Vega OS package.
 
 ```sh
 pnpm build
@@ -76,7 +76,7 @@ cd android
 ./gradlew assembleDebug
 ```
 
-On Windows use `gradlew.bat`. Set `ANDROID_HOME` to the Android SDK and `JAVA_HOME` to a compatible JDK, or use Android Studio. Install Android SDK Platform 37 and Build Tools 36.0.0 if needed.
+On Windows use `gradlew.bat`. Set `ANDROID_HOME` to the Android SDK and `JAVA_HOME` to a compatible JDK, or use Android Studio. Install Android SDK Platform 37 (SDK Manager package `platforms;android-37.0`) and the build tools required by the Android Gradle Plugin if needed.
 
 The APK is `android/app/build/outputs/apk/debug/app-debug.apk`.
 
