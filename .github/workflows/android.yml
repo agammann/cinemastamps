@@ -13,6 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - name: Build and sync web assets
+        run: |
+          npm install -g pnpm@11.28.2
+          pnpm install --frozen-lockfile
+          pnpm build
+          pnpm android:sync
       - name: Prepare Java and Android SDK
         shell: bash
         run: |
@@ -23,3 +32,22 @@ jobs:
       - name: Build and run unit tests
         working-directory: android
         run: ./gradlew --no-daemon assembleDebug testDebugUnitTest
+      - name: Verify bundled web assets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          root = Path("dist")
+          files = [p for p in root.rglob("*") if p.is_file()]
+          assert (root / "index.html").is_file()
+          assert any(p.suffix == ".js" for p in files), "Missing built JavaScript"
+          assert any(p.suffix == ".css" for p in files), "Missing built CSS"
+          apk = "android/app/build/outputs/apk/debug/app-debug.apk"
+          with ZipFile(apk) as archive:
+              for file in files:
+                  member = "assets/web/" + file.relative_to(root).as_posix()
+                  assert archive.read(member) == file.read_bytes(), f"Asset mismatch: {member}"
+          print(f"Verified {len(files)} web assets in {apk}")
+          PY
