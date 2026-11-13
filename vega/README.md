@@ -23,6 +23,8 @@ npm run build:release
 Kepler ESLint plugin. Keep install scripts enabled: both bundles use the patched
 external parser while retaining every Kepler lint rule. The hook rejects any
 unexpected plugin version or bundle content so an upstream change requires review.
+The pinned TOML 5.0.1 parser rejects integers outside JavaScript's safe range
+instead of silently rounding them; manifests requiring those values need review.
 `npm run test:security` exercises manifest privilege checks, malformed TOML,
 dependency compatibility, and the installation guard.
 

@@ -13,6 +13,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(new URL('../package.json', import.meta.url));
 const pluginDir = path.dirname(require.resolve('@amazon-devices/eslint-plugin-kepler/package.json'));
 const pollution = '[a.b]\ny = 1\n[a.b.y.__proto__.__proto__]\ncinemastampsPolluted = "yes"\n';
+const quotedPollution = '"b.c" = 1979-05-27T07:32:00Z\n[[\'"b\']]\n["b.c"]\n__proto__.__proto__.cinemastampsPolluted = "yes"\n';
 const nesting = 'value=' + '['.repeat(3000) + '1' + ']'.repeat(3000);
 const validManifest = readFileSync(path.join(root, 'manifest.toml'), 'utf8');
 const privilege = 'com.amazon.device-messaging.privilege.access';
@@ -40,7 +41,7 @@ test('Kepler manifest lint still enforces privileges and rejects unsafe TOML', (
   };
   try {
     assert.equal(check(`[[needs.privilege]]\nid = "${privilege}"`).messages.length, 0);
-    for (const manifest of [validManifest, '[invalid', pollution, nesting]) {
+    for (const manifest of [validManifest, '[invalid', pollution, quotedPollution, nesting]) {
       const result = check(manifest);
       assert.equal(result.messages.length, 1);
       assert.match(result.messages[0], /requires the \[\[needs.privilege\]\]/);
@@ -65,9 +66,50 @@ test('both embedded TOML entry points use the patched parser', () => {
     assert.equal(module.exports, toml);
     assert.deepEqual(JSON.parse(JSON.stringify(module.exports.parse(validManifest))), expected);
     assert.throws(() => module.exports.parse(pollution));
+    assert.throws(() => module.exports.parse(quotedPollution));
     assert.equal(Object.prototype.cinemastampsPolluted, undefined);
     assert.throws(() => module.exports.parse(nesting), error => !(error instanceof RangeError));
   }
+});
+
+test('manifest builder uses the fixed parser without changing ordinary privileges', () => {
+  const fixture = mkdtempSync(path.join(root, '.builder-security-'));
+  try {
+    const file = path.join(fixture, 'manifest.toml');
+    const probe = manifest => {
+      writeFileSync(file, manifest);
+      return JSON.parse(execFileSync(process.execPath, ['-e', `
+        const {createRequire} = require('node:module');
+        const req = createRequire(${JSON.stringify(path.join(root, 'package.json'))});
+        const builder = req('@amazon-devices/kepler-module-manifest-builder/dist/src/utils/compatibility-utils.js');
+        try { console.log(JSON.stringify({privileges: builder.getPrivilegesFromManifest(${JSON.stringify(file)}), polluted: Object.prototype.cinemastampsPolluted ?? null})); }
+        catch (error) { console.log(JSON.stringify({error: error.message, polluted: Object.prototype.cinemastampsPolluted ?? null})); }
+      `], {encoding: 'utf8', timeout: 5000}).trim());
+    };
+    assert.deepEqual(probe(`[[needs.privilege]]\nid = "${privilege}"`), {privileges: [privilege], polluted: null});
+    const result = probe(quotedPollution);
+    assert.match(result.error, /Error parsing toml/);
+    assert.equal(result.polluted, null);
+  } finally {
+    rmSync(fixture, {recursive: true, force: true});
+  }
+});
+
+test('fixed TOML bounds resource-heavy inputs and documents integer behavior', () => {
+  const toml = require('toml');
+  assert.equal(toml.parse('value = 9007199254740991').value, Number.MAX_SAFE_INTEGER);
+  assert.throws(() => toml.parse('value = 9007199254740992'), /cannot be represented losslessly/i);
+  const child = execFileSync(process.execPath, ['-e', `
+    const assert = require('node:assert/strict');
+    const {createRequire} = require('node:module');
+    const parser = createRequire(${JSON.stringify(path.join(root, 'package.json'))})('toml');
+    const docs = [Array.from({length: 10000}, (_, i) => '[[table' + i + ']]').join('\\n'),
+      'a.' .repeat(1000) + 'z = 1', 'x = 0x' + 'f'.repeat(100000)];
+    assert.doesNotThrow(() => parser.parse(docs[0]));
+    assert.doesNotThrow(() => parser.parse(docs[1]));
+    assert.throws(() => parser.parse(docs[2]));
+  `], {encoding: 'utf8', timeout: 10000});
+  assert.equal(child, '');
 });
 
 test('the install bridge is repeatable and refuses changed bundles before writing', () => {
