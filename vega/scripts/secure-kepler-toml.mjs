@@ -50,8 +50,8 @@ export function secureKeplerToml(
     return {target, content: patched, changed: true};
   });
   const pluginRequire = createRequire(path.join(pluginDir, 'package.json'));
-  if (pluginRequire('toml/package.json').version !== '4.3.0') {
-    throw new Error('The Kepler TOML bridge requires toml 4.3.0.');
+  if (pluginRequire('toml/package.json').version !== '5.0.1') {
+    throw new Error('The Kepler TOML bridge requires toml 5.0.1.');
   }
   for (const update of updates) {
     if (update.changed) writeFileSync(update.target, update.content);
