@@ -32,3 +32,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - run: docker build -t cinemastamps-ci .
       - run: docker run --rm --entrypoint pnpm cinemastamps-ci test
+      - name: Smoke test the running container
+        run: |
+          docker run -d --rm --name cinemastamps-ci-smoke cinemastamps-ci
+          trap 'docker stop cinemastamps-ci-smoke || true' EXIT
+          docker exec cinemastamps-ci-smoke node tests/container-smoke.mjs
