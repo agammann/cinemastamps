@@ -9,12 +9,15 @@ From this directory, with the SDK environment active:
 ```sh
 npm ci
 npm test
+npm run test:vega-stack
 npm run test:security
 npm run lint
 npm run build:release
 ```
 
 `npm test` runs TypeScript checking. The root project's `pnpm test` covers the review model and companion API. The native media integration test also needs FFmpeg and FFprobe; the root Docker image includes both.
+
+`npm run test:vega-stack` checks the installed React Native, React, Babel preset, and Kepler code generation versions against the current Vega 0.83 stack. Amazon's [dependency template](https://developer.amazon.com/docs/vega/2.0/rn-migration-dependencies) describes the supported combination. Update this check when migrating the full stack to a newer Amazon-supported release. The check cannot inspect the runtime on a device or replace an SDK build and device test.
 
 `npm ci` also verifies and updates the TOML entry points embedded in the pinned
 Kepler ESLint plugin. Keep install scripts enabled: both bundles use the patched
