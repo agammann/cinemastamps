@@ -67,7 +67,7 @@ Phone uploads support MP4 and WebM up to **250 MB**. H.264 video with AAC audio 
 
 ## Build and install on Fire OS
 
-The Android project uses Java, Gradle 9.3.1, Android Gradle Plugin 9.1.1, compile SDK 37, target SDK 35, and minimum API 25. Use a compatible JDK and an updated WebView. This is an APK for Fire OS; it is not a Vega OS package.
+The Android project uses Java, Gradle 9.8.2, Android Gradle Plugin 9.5.1, compile SDK 37, target SDK 35, and minimum API 25. Use JDK 21 and an updated WebView. This is an APK for Fire OS; it is not a Vega OS package.
 
 ```sh
 pnpm build
@@ -76,7 +76,7 @@ cd android
 ./gradlew assembleDebug
 ```
 
-On Windows use `gradlew.bat`. Set `ANDROID_HOME` to the Android SDK and `JAVA_HOME` to a compatible JDK, or use Android Studio. Install Android SDK Platform 37 and Build Tools 36.0.0 if needed.
+On Windows use `gradlew.bat`. Set `ANDROID_HOME` to the Android SDK and `JAVA_HOME` to a compatible JDK, or use Android Studio. Install Android SDK Platform 37 (SDK Manager package `platforms;android-37.0`) and the build tools required by the Android Gradle Plugin if needed.
 
 The APK is `android/app/build/outputs/apk/debug/app-debug.apk`.
 
@@ -130,6 +130,6 @@ Application source: MIT, copyright 2026 agammann. The bundled film, poster, and 
 
 ## Routine Android CI boundary
 
-`Verify Android APK` compiles the existing Android wrapper on a disposable Ubuntu 24.04 runner, verifies the debug signature and every bundled web asset against the production build, and retains the APK, exact asset hashes and runner/JDK/SDK evidence for 14 days. It uses only the runner's provisioned Android SDK; automatic SDK downloads are disabled and no SDK license is accepted by the workflow. A missing SDK package is a real failed prerequisite, not a skipped/pass result.
+`Verify Android` compiles and tests the existing Android wrapper on a hosted Ubuntu runner, checks the debug APK signature and bundled web assets against the production build, and retains the APK, asset hashes and runner/JDK evidence for 14 days. The existing workflow provisions its required Android platform with the SDK manager.
 
 This is an APK **compile/content gate**, not fresh-install or Android/TV emulator validation. Mobile/TV navigation, Back/relaunch, media/audio, storage recovery and accessibility still need a compatible disposable emulator/device. Native Vega packages require the separate Vega SDK and supported virtual device; an Android result does not establish Vega behavior. Physical Fire TV hardware performance must be measured before bundle optimization. Nothing in this lane publishes an APK or contacts a companion/provider.

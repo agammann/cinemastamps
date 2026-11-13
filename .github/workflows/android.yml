@@ -1,52 +1,67 @@
-name: Verify Android APK
+name: Verify Android
+
 on:
   pull_request:
   push:
     branches: [main]
+
 permissions:
   contents: read
-concurrency:
-  group: android-apk-${{ github.ref }}
-  cancel-in-progress: true
+
 jobs:
-  android-apk:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
+  android:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: '24'
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
-        with:
-          version: 11.25.0
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build && pnpm android:sync
-      - run: python scripts/test-verify-apk.py
-      - name: Use only the runner's provisioned JDK and Android SDK
+          node-version: 22
+      - name: Build and sync web assets
         run: |
-          test -x "$JAVA_HOME_21_X64/bin/java"
-          test -d "$ANDROID_HOME/platforms"
-          test -d "$ANDROID_HOME/build-tools"
-          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
-          echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
-          mkdir -p reports
-          {
-            echo "Source: $GITHUB_SHA"
-            echo "Runner image: $ImageOS $ImageVersion"
-            "$JAVA_HOME_21_X64/bin/java" -version 2>&1
-            find "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools" -maxdepth 2 -name source.properties -exec cat {} \;
-          } > reports/android-environment.txt
-      - name: Compile APK without SDK downloads or license acceptance
+          npm install -g pnpm@11.28.2
+          pnpm install --frozen-lockfile
+          pnpm build
+          pnpm android:sync
+      - name: Prepare Java and Android SDK
+        shell: bash
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0"
+      - name: Build and run unit tests
         working-directory: android
-        run: bash gradlew --no-daemon --console=plain -Pandroid.builder.sdkDownload=false assembleDebug
-      - name: Verify delivered APK and exact offline assets
+        run: ./gradlew --no-daemon assembleDebug testDebugUnitTest
+      - name: Verify bundled web assets
+        shell: bash
         run: |
-          python scripts/verify-apk.py --apk android/app/build/outputs/apk/debug/app-debug.apk --report reports/apk-contents.json
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose android/app/build/outputs/apk/debug/app-debug.apk > reports/apk-signature.txt
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging android/app/build/outputs/apk/debug/app-debug.apk > reports/apk-badging.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          root = Path("dist")
+          files = [p for p in root.rglob("*") if p.is_file()]
+          assert (root / "index.html").is_file()
+          assert any(p.suffix == ".js" for p in files), "Missing built JavaScript"
+          assert any(p.suffix == ".css" for p in files), "Missing built CSS"
+          apk = "android/app/build/outputs/apk/debug/app-debug.apk"
+          with ZipFile(apk) as archive:
+              for file in files:
+                  member = "assets/web/" + file.relative_to(root).as_posix()
+                  assert archive.read(member) == file.read_bytes(), f"Asset mismatch: {member}"
+          print(f"Verified {len(files)} web assets in {apk}")
+          PY
+      - name: Verify APK integrity, signature, and built asset parity
+        shell: bash
+        run: |
+          set -eu
+          python3 scripts/test-verify-apk.py
+          mkdir -p reports
+          python3 scripts/verify-apk.py --apk android/app/build/outputs/apk/debug/app-debug.apk --report reports/apk-contents.json
+          build_tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
+          "$build_tools/apksigner" verify --verbose android/app/build/outputs/apk/debug/app-debug.apk > reports/apk-signature.txt
+          "$build_tools/aapt" dump badging android/app/build/outputs/apk/debug/app-debug.apk > reports/apk-badging.txt
+          { echo "Source: $GITHUB_SHA"; echo "Runner image: $ImageOS $ImageVersion"; java -version 2>&1; } > reports/android-environment.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
