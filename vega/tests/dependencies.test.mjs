@@ -7,6 +7,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import vm from 'node:vm';
 import {secureKeplerToml} from '../scripts/secure-kepler-toml.mjs';
+import {repairTestExcludeWindows} from '../scripts/repair-test-exclude-windows.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(new URL('../package.json', import.meta.url));
@@ -93,6 +94,38 @@ test('the install bridge is repeatable and refuses changed bundles before writin
   }
 });
 
+test('test-exclude path bridge is idempotent and refuses unrecognized files', () => {
+  assert.equal(repairTestExcludeWindows(), 0);
+  const fixture = mkdtempSync(path.join(root, '.exclude-compat-'));
+  try {
+    const target = path.join(fixture, 'index.js');
+    const installed = readFileSync(require.resolve('test-exclude'), 'utf8');
+    const original = installed.replace(
+      "        if (path.sep !== '/') pathToCheck = pathToCheck.split(path.sep).join('/');\n\n", '',
+    );
+    const outside = path.join(fixture, 'is-outside-dir-win32.js');
+    const installedOutside = readFileSync(require.resolve('test-exclude/is-outside-dir-win32'), 'utf8');
+    const originalOutside = "'use strict';\n\nconst path = require('path');\nconst minimatch = require('minimatch');\n\nconst dot = { dot: true };\n\nmodule.exports = function(dir, filename) {\n    return !minimatch(path.resolve(dir, filename), path.join(dir, '**'), dot);\n};\n";
+    writeFileSync(path.join(fixture, 'package.json'), JSON.stringify({version: '6.0.0'}));
+    writeFileSync(target, original);
+    writeFileSync(outside, originalOutside + '\nchanged');
+    assert.throws(() => repairTestExcludeWindows(fixture), /Unrecognized test-exclude/);
+    assert.equal(readFileSync(target, 'utf8'), original);
+    writeFileSync(outside, originalOutside);
+    assert.equal(repairTestExcludeWindows(fixture), 2);
+    assert.equal(readFileSync(target, 'utf8'), installed);
+    assert.equal(readFileSync(outside, 'utf8'), installedOutside);
+    assert.equal(repairTestExcludeWindows(fixture), 0);
+    writeFileSync(target, original + '\nchanged');
+    assert.throws(() => repairTestExcludeWindows(fixture), /Unrecognized test-exclude/);
+    assert.equal(readFileSync(target, 'utf8'), original + '\nchanged');
+    writeFileSync(path.join(fixture, 'package.json'), JSON.stringify({version: '6.0.1'}));
+    assert.throws(() => repairTestExcludeWindows(fixture), /test-exclude changed/);
+  } finally {
+    rmSync(fixture, {recursive: true, force: true});
+  }
+});
+
 test('patched dependency branches retain caller APIs and reject security triggers', () => {
   const uuid = require('uuid');
   assert.ok(uuid.validate(uuid.v4()));
@@ -156,6 +189,15 @@ test('patched dependency branches retain caller APIs and reject security trigger
   const TestExclude = require('test-exclude');
   assert.equal(new TestExclude({cwd: root, include: ['src/**/*.tsx'], exclude: []})
     .shouldInstrument(path.join(root, 'src/App.tsx')), true);
+  assert.equal(new TestExclude({cwd: root, include: ['**/*.tsx'], exclude: []})
+    .shouldInstrument(path.resolve(root, '../outside.tsx')), false);
+  if (process.platform === 'win32') {
+    const outside = require('test-exclude/is-outside-dir-win32');
+    assert.equal(outside(root, 'src/App.tsx'), false);
+    assert.equal(outside(root, '../outside.tsx'), true);
+    const otherDrive = path.parse(root).root.toUpperCase() === 'Z:\\' ? 'Y:\\' : 'Z:\\';
+    assert.equal(outside(root, path.join(otherDrive, 'outside.tsx')), true);
+  }
   assert.equal(new TestExclude({relativePath: false, extension: [], include: ['*(*(*(a|b)))'], exclude: []})
     .shouldInstrument('a'.repeat(18) + 'z'), false);
 });

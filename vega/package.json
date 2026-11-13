@@ -8,7 +8,7 @@
   "scripts": {
     "clean": "rm -rf node_modules buildinfo.json dist build",
     "start": "react-native start",
-    "postinstall": "node scripts/secure-kepler-toml.mjs && node scripts/secure-prettier-braces.mjs && node scripts/secure-argparse-compat.mjs",
+    "postinstall": "node scripts/secure-kepler-toml.mjs && node scripts/secure-prettier-braces.mjs && node scripts/secure-argparse-compat.mjs && node scripts/repair-test-exclude-windows.mjs",
     "test": "tsc --noEmit",
     "test:security": "node --test tests/*.test.mjs",
     "lint": "eslint src --ext .ts,.tsx",
