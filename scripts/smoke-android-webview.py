@@ -13,6 +13,7 @@ def adb(*args):
 
 
 def snapshot():
+    adb("shell", "rm", "-f", "/sdcard/cinemastamps-window.xml")
     adb("shell", "uiautomator", "dump", "/sdcard/cinemastamps-window.xml")
     xml = adb("shell", "cat", "/sdcard/cinemastamps-window.xml")
     return ET.fromstring(xml), xml
@@ -27,7 +28,14 @@ def wait_for(*texts):
     deadline = time.monotonic() + 60
     last = ""
     while time.monotonic() < deadline:
-        root, last = snapshot()
+        try:
+            root, last = snapshot()
+        except (subprocess.CalledProcessError, ET.ParseError) as error:
+            # The emulator can finish booting before the accessibility window
+            # is available; keep the failure bounded by the same deadline.
+            last = f"Could not read accessibility hierarchy: {error}"
+            time.sleep(2)
+            continue
         if all(find_text(root, text) is not None for text in texts):
             return root
         time.sleep(2)
