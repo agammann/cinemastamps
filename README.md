@@ -127,3 +127,9 @@ See [verification notes](docs/VERIFICATION.md) for the exact tested environments
 ## Credits and license
 
 Application source: MIT, copyright 2026 agammann. The bundled film, poster, and font have separate licenses documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Routine Android CI boundary
+
+`Verify Android` compiles and tests the existing Android wrapper on a hosted Ubuntu runner, checks the debug APK signature and bundled web assets against the production build, and retains the APK, asset hashes and runner/JDK evidence for 14 days. The existing workflow provisions its required Android platform with the SDK manager.
+
+This is an APK **compile/content gate**, not fresh-install or Android/TV emulator validation. Mobile/TV navigation, Back/relaunch, media/audio, storage recovery and accessibility still need a compatible disposable emulator/device. Native Vega packages require the separate Vega SDK and supported virtual device; an Android result does not establish Vega behavior. Physical Fire TV hardware performance must be measured before bundle optimization. Nothing in this lane publishes an APK or contacts a companion/provider.
