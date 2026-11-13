@@ -10,6 +10,7 @@
     "start": "react-native start",
     "postinstall": "node scripts/secure-kepler-toml.mjs && node scripts/secure-prettier-braces.mjs && node scripts/secure-argparse-compat.mjs && node scripts/repair-test-exclude-windows.mjs",
     "test": "tsc --noEmit",
+    "test:vega-stack": "node scripts/check-vega-stack.mjs && node --test tests/vega-stack.test.mjs",
     "test:security": "node --test tests/*.test.mjs",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",

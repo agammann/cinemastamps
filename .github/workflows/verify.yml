@@ -22,6 +22,7 @@ jobs:
           cache: npm
           cache-dependency-path: vega/package-lock.json
       - run: npm ci
+      - run: npm run test:vega-stack
       - run: npm run test:security
       - run: npm test
       - run: npm run lint
