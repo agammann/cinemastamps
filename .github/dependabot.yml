@@ -8,6 +8,19 @@ updates:
     directory: "/vega"
     schedule:
       interval: "weekly"
+    # Vega's current SDK supports the RN 0.83 stack. Migrate these packages
+    # together when Amazon documents a newer runtime (see issue #42).
+    ignore:
+      - dependency-name: "react-native"
+        versions: [">0.83.0"]
+      - dependency-name: "@react-native/*"
+        versions: [">0.83.0"]
+      - dependency-name: "@react-native-community/cli"
+        versions: [">20.2.0"]
+      - dependency-name: "react"
+        versions: [">19.2.0"]
+      - dependency-name: "react-test-renderer"
+        versions: [">19.2.0"]
   - package-ecosystem: "gradle"
     directory: "/android"
     schedule:
