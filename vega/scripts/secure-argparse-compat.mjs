@@ -35,8 +35,24 @@ export function secureArgparseCompat(
 }
 
 export function secureRushstackCompat(
-  directory = path.dirname(require.resolve('@rushstack/ts-command-line/package.json')),
+  directory,
+  lockfile = fileURLToPath(new URL('../package-lock.json', import.meta.url)),
 ) {
+  if (directory === undefined) {
+    try {
+      directory = path.dirname(require.resolve('@rushstack/ts-command-line/package.json'));
+    } catch (error) {
+      if (error.code !== 'MODULE_NOT_FOUND') throw error;
+      const packages = JSON.parse(readFileSync(lockfile, 'utf8')).packages;
+      if (!packages || Object.entries(packages).some(([location, metadata]) =>
+        location.endsWith('node_modules/@rushstack/ts-command-line') ||
+        metadata.dependencies?.['@rushstack/ts-command-line'] ||
+        metadata.optionalDependencies?.['@rushstack/ts-command-line'] ||
+        metadata.devDependencies?.['@rushstack/ts-command-line']
+      )) throw error;
+      return 0;
+    }
+  }
   if (JSON.parse(readFileSync(path.join(directory, 'package.json'))).version !== '4.22.0') {
     throw new Error('Rushstack changed; review its argparse compatibility bridge.');
   }

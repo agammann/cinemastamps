@@ -40,8 +40,10 @@ This is a repository-local patch, not an upstream patched release. The original
 license, source version and exact limits are documented beside the copy.
 Argparse consumers use 2.0.1, which removes the vulnerable `sprintf-js` dependency.
 A version/hash-checked compatibility hook preserves legacy `--version` output
-and the `Const` export used by Rushstack's TypeScript imports. Legacy CLI aliases
-remain supported; Rushstack's usage callback targets the current parser method.
+and the `Const` export used by Rushstack's TypeScript imports. When Rushstack is
+present, its version/hash-checked bridge preserves its usage callback; if the
+lockfile expects it but it is missing, installation fails. Kepler 4.0.2 no longer
+includes Rushstack or API Extractor. Legacy CLI aliases remain supported.
 Help/error wording and deprecation warnings can differ.
 Security checks exercise real API Extractor, YAML, glob and formatter
 commands as well as malicious-input rejection. Keep install scripts enabled.

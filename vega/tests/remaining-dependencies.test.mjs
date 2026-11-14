@@ -6,7 +6,7 @@ import {createRequire} from 'node:module';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import vm from 'node:vm';
-import {secureArgparseCompat} from '../scripts/secure-argparse-compat.mjs';
+import {secureArgparseCompat, secureRushstackCompat} from '../scripts/secure-argparse-compat.mjs';
 import {securePrettierBraces} from '../scripts/secure-prettier-braces.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -207,7 +207,35 @@ test('argparse compatibility repairs are repeatable and refuse changed implement
   }
 });
 
-test('Rushstack and API Extractor retain command parsing, help, and error exits', async () => {
+const lockPackages = JSON.parse(readFileSync(path.join(root, 'package-lock.json'))).packages;
+const hasRushstack = Object.keys(lockPackages).some(location => location.endsWith('node_modules/@rushstack/ts-command-line'));
+const hasApiExtractor = Object.keys(lockPackages).some(location => location.endsWith('node_modules/@microsoft/api-extractor'));
+
+test('the Rushstack bridge refuses missing packages that the lockfile expects', {skip: hasRushstack}, () => {
+  assert.equal(secureRushstackCompat(), 0);
+  const fixture = mkdtempSync(path.join(root, '.rushstack-lock-'));
+  try {
+    const lockfile = path.join(fixture, 'package-lock.json');
+    writeFileSync(lockfile, JSON.stringify({packages: {'node_modules/@rushstack/ts-command-line': {version: '4.22.0'}}}));
+    assert.throws(() => secureRushstackCompat(undefined, lockfile), {code: 'MODULE_NOT_FOUND'});
+    writeFileSync(lockfile, JSON.stringify({packages: {'': {dependencies: {'@rushstack/ts-command-line': '4.22.0'}}}}));
+    assert.throws(() => secureRushstackCompat(undefined, lockfile), {code: 'MODULE_NOT_FOUND'});
+  } finally {
+    rmSync(fixture, {recursive: true, force: true});
+  }
+});
+
+test('the Rushstack bridge refuses unrecognized installed implementations', () => {
+  const fixture = mkdtempSync(path.join(root, '.rushstack-security-'));
+  try {
+    writeFileSync(path.join(fixture, 'package.json'), JSON.stringify({version: '4.22.1'}));
+    assert.throws(() => secureRushstackCompat(fixture), /Rushstack changed/);
+  } finally {
+    rmSync(fixture, {recursive: true, force: true});
+  }
+});
+
+test('Rushstack and API Extractor retain command parsing, help, and error exits', {skip: !hasRushstack || !hasApiExtractor}, async () => {
   const {DynamicCommandLineParser, DynamicCommandLineAction} = require('@rushstack/ts-command-line');
   const setup = () => {
     const parser = new DynamicCommandLineParser({toolFilename: 'films', toolDescription: 'Review films'});
