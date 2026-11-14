@@ -116,7 +116,7 @@ test('the install bridge is repeatable and refuses changed bundles before writin
   assert.equal(secureKeplerToml(), 0);
   const fixture = mkdtempSync(path.join(root, '.bridge-security-'));
   try {
-    writeFileSync(path.join(fixture, 'package.json'), JSON.stringify({version: '0.1.15'}));
+    writeFileSync(path.join(fixture, 'package.json'), JSON.stringify({version: '0.1.16'}));
     mkdirSync(path.join(fixture, 'dist/formatters'), {recursive: true});
     const main = readFileSync(path.join(pluginDir, 'dist/index.js'), 'utf8');
     const formatter = readFileSync(path.join(pluginDir, 'dist/formatters/default.js'), 'utf8');
@@ -129,7 +129,7 @@ test('the install bridge is repeatable and refuses changed bundles before writin
     writeFileSync(path.join(fixture, 'dist/formatters/default.js'), formatter);
     assert.equal(secureKeplerToml(fixture), 1);
     assert.equal(secureKeplerToml(fixture), 0);
-    writeFileSync(path.join(fixture, 'package.json'), JSON.stringify({version: '0.1.16'}));
+    writeFileSync(path.join(fixture, 'package.json'), JSON.stringify({version: '0.1.17'}));
     assert.throws(() => secureKeplerToml(fixture), /Kepler ESLint changed/);
   } finally {
     rmSync(fixture, {recursive: true, force: true});

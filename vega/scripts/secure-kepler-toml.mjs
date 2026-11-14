@@ -9,14 +9,14 @@ const replacement = '1293:e=>{e.exports=require("toml")}';
 const bundles = [
   {
     file: 'dist/index.js',
-    original: 'ca14e2a3a2002166a87c423fe7736b79a561fb87f3ee6012f1d18683371bda45',
-    patched: 'f15be8094439b76042c979b92c5dc28324ec1e900f27f09f4697bae05f4f3885',
+    original: '5639bc2b98555f64f27e3567e23f47577ce4c45b8389cbd45061f13d35fabc53',
+    patched: 'a5f9adbad4cc9aa5361a6c783a572b527bbe204e882f37f1f3bb5025eed513e5',
     entry: '1293:(e,t,r)=>{var s=r(5546),n=r(2708);e.exports={parse:function(e){var t=s.parse(e.toString());return n.compile(t)}}}',
   },
   {
     file: 'dist/formatters/default.js',
-    original: '5a272d1cf26162b5bb4b9960d1e6490c0d0efcda83e1487d4742a8c064b434bb',
-    patched: 'f74b9a341a89f8294b075b76ae820b52ae674a3935ce0a6789b3f8ec6e3e412d',
+    original: '7fd44302b7d02c3fcd4c9246a70022e7b0ee4a0174af5776b75a18c21e9223f5',
+    patched: '1f89ecf598ef2bdb46dfe23ec0ead3c619b7063f09ee7fcd5a46d8fcdc100b64',
     entry: '1293:(e,t,r)=>{var n=r(5546),o=r(2708);e.exports={parse:function(e){var t=n.parse(e.toString());return o.compile(t)}}}',
   },
 ];
@@ -30,7 +30,7 @@ export function secureKeplerToml(
   ),
 ) {
   const manifest = JSON.parse(readFileSync(path.join(pluginDir, 'package.json')));
-  if (manifest.version !== '0.1.15') {
+  if (manifest.version !== '0.1.16') {
     throw new Error('Kepler ESLint changed; review the TOML bridge before installing.');
   }
   // Validate every bundle before writing either one; unexpected upstream bytes
