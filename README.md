@@ -67,7 +67,7 @@ Phone uploads support MP4 and WebM up to **250 MB**. H.264 video with AAC audio 
 
 ## Build and install on Fire OS
 
-The Android project uses Java, Gradle 9.8.2, Android Gradle Plugin 9.5.1, compile SDK 37, target SDK 35, and minimum API 25. Use JDK 21 and an updated WebView. This is an APK for Fire OS; it is not a Vega OS package.
+The Android project uses Java, Gradle 9.9.1, Android Gradle Plugin 9.5.1, compile SDK 37, target SDK 35, and minimum API 25. Use JDK 21 and an updated WebView. This is an APK for Fire OS; it is not a Vega OS package.
 
 ```sh
 pnpm build
