@@ -32,7 +32,7 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@amazon-devices/eslint-plugin-kepler": "^0.1.4",
+    "@amazon-devices/eslint-plugin-kepler": "^0.1.16",
     "@amazon-devices/kepler-cli-platform": "^0",
     "@react-native-community/cli": "20.2.0",
     "@react-native/babel-preset": "0.83.0",
