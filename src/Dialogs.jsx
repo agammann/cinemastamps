@@ -3,7 +3,7 @@ import QRCode from "qrcode";
 import Icon from "./Icon";
 import { focusable } from "./useRemote";
 import { api } from "./api";
-import { KINDS, timecode } from "../shared/model.mjs";
+import { KINDS, timecode, pairingBase } from "../shared/model.mjs";
 export function Dialog({ title, close, children }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -268,8 +268,7 @@ export function PairDialog({ connection, pair, disconnect, close }) {
       let publicBase = active.base;
       try {
         const info = await api(active, "/health");
-        if (/localhost|127\.0\.0\.1/.test(publicBase) && info.addresses.length)
-          publicBase = info.addresses[0];
+        publicBase = pairingBase(active.base, info);
       } catch {}
       const next = `${publicBase}/?companion=1#token=${active.token}`;
       const data = await QRCode.toDataURL(next, {

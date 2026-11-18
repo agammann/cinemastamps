@@ -4,7 +4,7 @@ React Native application for Vega OS 1.2. The release was built with Vega SDK 0.
 
 ## Build
 
-From this directory, with the SDK environment active:
+Use Node `^22.18.0 || ^24.11.0 || >=26.0.0` for the locked native dependencies. The documented release used Node 22.23.3. From this directory, with the SDK environment active:
 
 ```sh
 npm ci

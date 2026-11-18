@@ -23,6 +23,7 @@ import {
   newReview,
   exportReview,
   validateVideoUrl,
+  companionBase,
 } from "../shared/model.mjs";
 
 const TOKEN = /^[a-f0-9]{48}$/;
@@ -35,7 +36,7 @@ const SESSION_STORAGE_BYTES = 550 * 1024 * 1024;
 const INSTANCE_STORAGE_BYTES = 2 * 1024 * 1024 * 1024;
 const storageError = (message) => Object.assign(new Error(message), { code: 'STORAGE_LIMIT' });
 export function createApp({
-  dataDir, webDir, port = 4318, publicBase = "",
+  dataDir, webDir, port = 4318, publicBase = "", advertiseAddresses = false,
   maxUploadBytes = MAX_UPLOAD_BYTES,
   maxSessionStorageBytes = SESSION_STORAGE_BYTES,
   maxInstanceStorageBytes = INSTANCE_STORAGE_BYTES,
@@ -207,11 +208,11 @@ export function createApp({
   maintenance.unref();
   app.locals.stopMaintenance = () => clearInterval(maintenance);
   app.get("/api/health", (req, res) => {
-    const addresses = Object.values(os.networkInterfaces())
+    const addresses = advertiseAddresses ? Object.values(os.networkInterfaces())
       .flat()
       .filter((i) => i.family === "IPv4" && !i.internal)
-      .map((i) => `http://${i.address}:${port}`);
-    res.json({ name: "Cinemastamps", addresses, maxUploadMB: 250 });
+      .map((i) => `http://${i.address}:${port}`) : [];
+    res.json({ name: "Cinemastamps", publicBase: companionBase(publicBase), addresses, maxUploadMB: 250 });
   });
   app.post("/api/sessions", sessionRateLimit, (req, res) => {
     prune();

@@ -1,5 +1,13 @@
 # Cinemastamps verification
 
+## Browser and setup source follow-up — November 17, 2026
+
+Browser pairing uses the configured `PUBLIC_BASE_URL` origin before host-interface suggestions. The health response advertises interfaces only when the server runs in LAN mode. The native pairing endpoint retains its existing URL behavior. Ordinary regressions cover an explicit mapped-port origin, default loopback behavior, LAN suggestions and older companion fallback.
+
+The Windows source checks used Node 24.19.0 and pnpm 11.28.2. The frozen root install and production build passed. The selected model, connection, playback-health, companion and native-pairing files contain 14 tests, with 13 passing and the FFmpeg media test skipped because FFmpeg was unavailable on the Windows path. The separate media-security and native security regression suites were excluded from this local pass.
+
+The native Node prerequisite now matches the full locked dependency intersection `^22.18.0 || ^24.11.0 || >=26.0.0`. Only the Git line endings of `android/gradlew.bat` were normalized, retaining CRLF checkout bytes. The current Android workflow includes a bounded offline emulator startup and pairing-dialog check. No native Vega build, device installation or new TV distribution was produced for this source follow-up. The published 0.2.2 packages and dated native evidence below remain separate.
+
 ## Browser source follow-up — October 2, 2026
 
 A fresh Windows checkout passed the frozen pnpm install, production build, and
