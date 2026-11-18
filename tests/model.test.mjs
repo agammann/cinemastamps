@@ -6,6 +6,8 @@ import {
   timecode,
   validStamp,
   validateVideoUrl,
+  companionBase,
+  pairingBase,
 } from "../shared/model.mjs";
 test("timecode handles hours, zero and invalid values", () => {
   assert.equal(timecode(0), "00:00");
@@ -42,4 +44,20 @@ test("rejects invalid time and executable video URL schemes", () => {
     validateVideoUrl("https://example.com/movie.mp4"),
     "https://example.com/movie.mp4",
   );
+});
+
+test("pairing prefers the configured public origin and retains older companion fallback", () => {
+  const addresses = ["http://192.0.2.20:4318"];
+  assert.equal(pairingBase("http://127.0.0.1:14318", {
+    publicBase: "http://127.0.0.1:14318/", addresses,
+  }), "http://127.0.0.1:14318");
+  assert.equal(pairingBase("http://127.0.0.1:14318", {
+    publicBase: "https://screening.example:8443", addresses,
+  }), "https://screening.example:8443");
+  assert.equal(pairingBase("http://127.0.0.1:14318", { addresses: [] }), "http://127.0.0.1:14318");
+  assert.equal(pairingBase("http://127.0.0.1:14318", { addresses }), addresses[0]);
+  assert.equal(pairingBase("http://192.0.2.30:14318", { addresses }), "http://192.0.2.30:14318");
+  assert.equal(pairingBase("http://127.0.0.1:14318", {}), "http://127.0.0.1:14318");
+  assert.equal(companionBase("not a URL"), "");
+  assert.equal(companionBase("https://screening.example/path"), "");
 });

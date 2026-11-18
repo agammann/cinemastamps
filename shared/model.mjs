@@ -65,6 +65,26 @@ export function validateVideoUrl(value) {
     throw new Error("Use a direct HTTP or HTTPS video link.");
   return url.href;
 }
+export function companionBase(value) {
+  if (typeof value !== "string") return "";
+  try {
+    const url = new URL(value);
+    if (["http:", "https:"].includes(url.protocol) && !url.username && !url.password &&
+        url.pathname === "/" && !url.search && !url.hash) return url.origin;
+  } catch {}
+  return "";
+}
+export function pairingBase(base, info = {}) {
+  const configured = companionBase(info?.publicBase);
+  if (configured) return configured;
+  const current = companionBase(base);
+  const loopback = current && ["localhost", "127.0.0.1", "[::1]"].includes(new URL(current).hostname);
+  if (loopback && Array.isArray(info?.addresses)) {
+    const advertised = companionBase(info.addresses[0]);
+    if (advertised) return advertised;
+  }
+  return current || base;
+}
 function csvCell(value) {
   let text = String(value ?? "");
   if (/^[=+\-@\t\r]/.test(text)) text = "'" + text;
